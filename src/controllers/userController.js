@@ -35,28 +35,27 @@ export const getUserById = async (req, res) => {
 // Update user
 export const updateUser = async (req, res) => {
   try {
-    const { name, email, role } = req.body;
-
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Email update & uniqueness check
+    const { email } = req.body;
     if (email && email !== user.email) {
       const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ message: 'Email already in use' });
-      }
-      user.email = email;
+      if (existingUser) return res.status(400).json({ message: 'Email already in use' });
     }
 
-    // Apply other updates only if provided
-    if (name !== undefined) user.name = name;
-    if (role !== undefined) user.role = role;
+    const updates = {};
+    if (req.body.name !== undefined) updates.name = req.body.name;
+    if (req.body.email !== undefined) updates.email = req.body.email;
+    if (req.body.role !== undefined) updates.role = req.body.role;
 
-    const updatedUser = await user.save();
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true }
+    );
     res.json(updatedUser);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message });
   }
 };
