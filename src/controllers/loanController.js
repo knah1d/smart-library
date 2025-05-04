@@ -1,4 +1,3 @@
-import { validationResult } from 'express-validator';
 import Loan from '../models/Loan.js';
 import Book from '../models/Book.js';
 import User from '../models/User.js';
@@ -7,20 +6,13 @@ import mongoose from 'mongoose';
 // Create a new loan
 export const createLoan = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { user_id, book_id, due_date } = req.body;
 
-    // Check if user exists
     const user = await User.findById(user_id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if book exists and is available
     const book = await Book.findById(book_id);
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
@@ -29,24 +21,12 @@ export const createLoan = async (req, res) => {
       return res.status(400).json({ message: 'Book is not available for loan' });
     }
 
-    // Check if user has any overdue books
-    const overdueLoans = await Loan.find({
-      user: user_id,
-      status: 'OVERDUE'
-    });
-    if (overdueLoans.length > 0) {
-      return res.status(400).json({ message: 'User has overdue books' });
-    }
-
-    // Create loan
     const loan = new Loan({
       user: user_id,
       book: book_id,
-      dueDate: due_date,
-      originalDueDate: due_date
+      dueDate: due_date
     });
 
-    // Update book availability
     book.availableCopies -= 1;
     await book.save();
     await loan.save();
@@ -59,85 +39,33 @@ export const createLoan = async (req, res) => {
 
 // Return a book
 export const returnBook = async (req, res) => {
-  // Start a session for the transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { loan_id } = req.body;
-
-    // First verify the loan exists
-    const existingLoan = await Loan.findById(loan_id);
-    if (!existingLoan) {
+    const loan = await Loan.findById(loan_id);
+    
+    if (!loan) {
       await session.abortTransaction();
       return res.status(404).json({ message: 'Loan not found' });
     }
 
-    // Then try to update it atomically
-    const loan = await Loan.findOneAndUpdate(
-      { 
-        _id: loan_id,
-        status: { $ne: 'RETURNED' } // Ensure we don't update already returned loans
-      },
-      { 
-        $set: {
-          status: 'RETURNED',
-          returnDate: new Date()
-        }
-      },
-      { 
-        new: true, // Return updated document
-        session,
-        runValidators: true
-      }
-    ).populate('book', 'title author');
+    loan.status = 'RETURNED';
+    loan.returnDate = new Date();
+    await loan.save({ session });
 
-    if (!loan) {
-      await session.abortTransaction();
-      return res.status(400).json({ message: 'Book already returned or loan not found' });
+    const book = await Book.findById(loan.book);
+    if (book) {
+      book.availableCopies += 1;
+      await book.save({ session });
     }
 
-    // Update book availability atomically
-    const book = await Book.findOneAndUpdate(
-      { _id: loan.book._id },
-      { $inc: { availableCopies: 1 } },
-      { new: true, session }
-    );
-
-    if (!book) {
-      await session.abortTransaction();
-      return res.status(404).json({ message: 'Associated book not found' });
-    }
-
-    // Commit the transaction
     await session.commitTransaction();
-
-    // Format the response
-    res.json({
-      id: loan._id,
-      book: {
-        id: loan.book._id,
-        title: loan.book.title,
-        author: loan.book.author
-      },
-      issue_date: loan.issueDate,
-      due_date: loan.dueDate,
-      return_date: loan.returnDate,
-      status: loan.status
-    });
-
+    res.json(loan);
   } catch (error) {
     await session.abortTransaction();
-    console.error('Error returning book:', error);
-    res.status(500).json({ 
-      message: 'Error returning book', 
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
-    });
+    res.status(500).json({ message: error.message });
   } finally {
     session.endSession();
   }
@@ -150,20 +78,7 @@ export const getUserLoans = async (req, res) => {
       .populate('book', 'title author')
       .sort({ issueDate: -1 });
 
-    const formattedLoans = loans.map(loan => ({
-      id: loan._id,
-      book: {
-        id: loan.book._id,
-        title: loan.book.title,
-        author: loan.book.author
-      },
-      issue_date: loan.issueDate,
-      due_date: loan.dueDate,
-      return_date: loan.returnDate || null,
-      status: loan.status
-    }));
-
-    res.json(formattedLoans);
+    res.json(loans);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -175,14 +90,13 @@ export const getOverdueLoans = async (req, res) => {
     const now = new Date();
     const overdueLoans = await Loan.find({
       dueDate: { $lt: now },
-      status: { $in: ['ACTIVE', 'OVERDUE'] }  // Include both ACTIVE and OVERDUE loans
+      status: { $in: ['ACTIVE', 'OVERDUE'] }
     })
     .populate('user', 'name email')
     .populate('book', 'title author')
-    .sort({ dueDate: 1 });  // Sort by due date ascending
+    .sort({ dueDate: 1 });
 
     const formattedLoans = overdueLoans.map(loan => {
-      // Calculate days overdue
       const dueDate = new Date(loan.dueDate);
       const diffTime = Math.abs(now - dueDate);
       const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -207,90 +121,49 @@ export const getOverdueLoans = async (req, res) => {
 
     res.json(formattedLoans);
   } catch (error) {
-    console.error('Error fetching overdue loans:', error);
-    res.status(500).json({ 
-      message: 'Error fetching overdue loans',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
 // Extend loan due date
 export const extendLoan = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { extension_days } = req.body;
-    const loanId = req.params.id;
+    const loan = await Loan.findById(req.params.id);
 
-    if (!extension_days || extension_days <= 0) {
-      return res.status(400).json({ message: 'Valid extension days are required' });
-    }
-
-    const loan = await Loan.findById(loanId).populate('user', 'name email').populate('book', 'title author');
     if (!loan) {
       return res.status(404).json({ message: 'Loan not found' });
     }
 
-    // Allow both ACTIVE and OVERDUE loans to be extended
     if (!['ACTIVE', 'OVERDUE'].includes(loan.status)) {
-      return res.status(400).json({ 
-        message: 'Can only extend active or overdue loans',
-        current_status: loan.status,
-        loan_details: {
-          id: loan._id,
-          user: loan.user,
-          book: loan.book,
-          issue_date: loan.issueDate,
-          due_date: loan.dueDate,
-          status: loan.status
-        }
-      });
+      return res.status(400).json({ message: 'Can only extend active or overdue loans' });
     }
 
     if (loan.extensionsCount >= 2) {
-      return res.status(400).json({ 
-        message: 'Maximum number of extensions reached',
-        extensions_count: loan.extensionsCount
-      });
+      return res.status(400).json({ message: 'Maximum number of extensions reached' });
     }
 
-    // Calculate new due date
+    const originalDueDate = loan.dueDate;
     const newDueDate = new Date(loan.dueDate);
     newDueDate.setDate(newDueDate.getDate() + extension_days);
 
+    // Increment extensions count
+    loan.extensionsCount += 1;
     loan.dueDate = newDueDate;
-    loan.extensionsCount = (loan.extensionsCount || 0) + 1;
-    loan.status = 'ACTIVE'; // Reset status to ACTIVE after extension
+    loan.status = 'ACTIVE';
     await loan.save();
 
-    // Format the response
     res.json({
       id: loan._id,
-      user: {
-        id: loan.user._id,
-        name: loan.user.name,
-        email: loan.user.email
-      },
-      book: {
-        id: loan.book._id,
-        title: loan.book.title,
-        author: loan.book.author
-      },
-      issue_date: loan.issueDate,
-      due_date: loan.dueDate,
-      extensions_count: loan.extensionsCount,
+      user_id: loan.user,
+      book_id: loan.book,
+      issue_date: loan.issueDate.toISOString(),
+      original_due_date: originalDueDate.toISOString(),
+      extended_due_date: loan.dueDate.toISOString(),
       status: loan.status,
-      message: 'Loan extended successfully'
+      extensions_count: loan.extensionsCount
     });
   } catch (error) {
-    console.error('Error extending loan:', error);
-    res.status(500).json({ 
-      message: 'Error extending loan',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
-    });
+    res.status(500).json({ message: error.message });
   }
 };

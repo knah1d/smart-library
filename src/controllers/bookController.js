@@ -1,17 +1,10 @@
-import { validationResult } from 'express-validator';
 import Book from '../models/Book.js';
 
 // Create a new book
 export const createBook = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { title, author, isbn, copies } = req.body;
     
-    // Check if book with ISBN already exists
     const existingBook = await Book.findOne({ isbn });
     if (existingBook) {
       return res.status(400).json({ message: 'Book with this ISBN already exists' });
@@ -70,11 +63,6 @@ export const getBookById = async (req, res) => {
 // Update book
 export const updateBook = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { title, author, isbn, copies, available_copies } = req.body;
     const book = await Book.findById(req.params.id);
 
@@ -82,7 +70,6 @@ export const updateBook = async (req, res) => {
       return res.status(404).json({ message: 'Book not found' });
     }
 
-    // Check if ISBN is being changed and if it's already taken
     if (isbn && isbn !== book.isbn) {
       const existingBook = await Book.findOne({ isbn });
       if (existingBook) {
@@ -90,20 +77,10 @@ export const updateBook = async (req, res) => {
       }
     }
 
-    // Update only the fields that are provided
     if (title) book.title = title;
     if (author) book.author = author;
     if (isbn) book.isbn = isbn;
-    
-    // Handle copies and available_copies updates
-    if (copies !== undefined) {
-      book.copies = copies;
-      // If available_copies not provided, maintain the same ratio of available to total copies
-      if (available_copies === undefined) {
-        book.availableCopies = Math.min(copies, book.availableCopies);
-      }
-    }
-    
+    if (copies !== undefined) book.copies = copies;
     if (available_copies !== undefined) {
       if (available_copies > book.copies) {
         return res.status(400).json({ message: 'Available copies cannot exceed total copies' });
@@ -112,17 +89,7 @@ export const updateBook = async (req, res) => {
     }
 
     await book.save();
-
-    res.json({
-      id: book._id,
-      title: book.title,
-      author: book.author,
-      isbn: book.isbn,
-      copies: book.copies,
-      available_copies: book.availableCopies,
-      created_at: book.createdAt,
-      updated_at: book.updatedAt
-    });
+    res.json(book);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -136,7 +103,6 @@ export const deleteBook = async (req, res) => {
       return res.status(404).json({ message: 'Book not found' });
     }
 
-    // Check if book has any active loans
     if (book.copies !== book.availableCopies) {
       return res.status(400).json({ message: 'Cannot delete book with active loans' });
     }

@@ -1,17 +1,10 @@
-import { validationResult } from 'express-validator';
 import User from '../models/User.js';
 
 // Create a new user
 export const createUser = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { name, email, role } = req.body;
     
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email already exists' });
@@ -42,11 +35,6 @@ export const getUserById = async (req, res) => {
 // Update user
 export const updateUser = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { name, email, role } = req.body;
     const user = await User.findById(req.params.id);
 
@@ -54,7 +42,6 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if email is being changed and if it's already taken
     if (email !== user.email) {
       const existingUser = await User.findOne({ email });
       if (existingUser) {

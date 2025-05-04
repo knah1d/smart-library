@@ -27,6 +27,11 @@ const loanSchema = new mongoose.Schema({
     enum: ['ACTIVE', 'RETURNED', 'OVERDUE'],
     default: 'ACTIVE'
   },
+  extensionsCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  }
 });
 
 // Update status to OVERDUE if book is not returned and due date has passed
