@@ -23,10 +23,10 @@ const validateReturn = [
 ];
 
 // Routes
-router.post('/loans', validateLoan, createLoan);
+router.post('/', validateLoan, createLoan);
 router.post('/returns', validateReturn, returnBook);
-router.get('/loans/overdue', getOverdueLoans);
-router.get('/loans/:userId', getUserLoans);
-router.put('/loans/:id/extend', extendLoan);
+router.get('/overdue', getOverdueLoans);
+router.get('/:userId', getUserLoans);
+router.put('/:id/extend', extendLoan);
 
 export default router; 

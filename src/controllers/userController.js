@@ -59,3 +59,21 @@ export const updateUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Find user by ID - for other controllers to use
+export const findUserById = async (userId) => {
+  try {
+    return await User.findById(userId);
+  } catch (error) {
+    throw new Error(`Error finding user: ${error.message}`);
+  }
+};
+
+// Count total users - for stats controller
+export const countUsers = async () => {
+  try {
+    return await User.countDocuments();
+  } catch (error) {
+    throw new Error(`Error counting users: ${error.message}`);
+  }
+};

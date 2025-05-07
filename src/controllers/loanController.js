@@ -1,19 +1,19 @@
 import Loan from '../models/Loan.js';
-import Book from '../models/Book.js';
-import User from '../models/User.js';
 import mongoose from 'mongoose';
+import { findUserById } from './userController.js';
+import { findBookById, decreaseBookAvailability, increaseBookAvailability } from './bookController.js';
 
 // Create a new loan
 export const createLoan = async (req, res) => {
   try {
     const { user_id, book_id, due_date } = req.body;
 
-    const user = await User.findById(user_id);
+    const user = await findUserById(user_id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const book = await Book.findById(book_id);
+    const book = await findBookById(book_id);
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
@@ -27,8 +27,7 @@ export const createLoan = async (req, res) => {
       dueDate: due_date
     });
 
-    book.availableCopies -= 1;
-    await book.save();
+    await decreaseBookAvailability(book_id);
     await loan.save();
 
     res.status(201).json(loan);
@@ -55,11 +54,7 @@ export const returnBook = async (req, res) => {
     loan.returnDate = new Date();
     await loan.save({ session });
 
-    const book = await Book.findById(loan.book);
-    if (book) {
-      book.availableCopies += 1;
-      await book.save({ session });
-    }
+    await increaseBookAvailability(loan.book, session);
 
     await session.commitTransaction();
     res.json(loan);
@@ -165,5 +160,127 @@ export const extendLoan = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// For stats controller
+export const getPopularBooksData = async () => {
+  try {
+    return await Loan.aggregate([
+      {
+        $group: {
+          _id: '$book',
+          borrowCount: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { borrowCount: -1 }
+      },
+      {
+        $limit: 10
+      },
+      {
+        $lookup: {
+          from: 'books',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'bookDetails'
+        }
+      },
+      {
+        $unwind: '$bookDetails'
+      },
+      {
+        $project: {
+          book_id: '$_id',
+          title: '$bookDetails.title',
+          author: '$bookDetails.author',
+          borrow_count: '$borrowCount'
+        }
+      }
+    ]);
+  } catch (error) {
+    throw new Error(`Error getting popular books: ${error.message}`);
+  }
+};
+
+// For stats controller
+export const getActiveUsersData = async () => {
+  try {
+    return await Loan.aggregate([
+      {
+        $group: {
+          _id: '$user',
+          booksBorrowed: { $sum: 1 },
+          currentBorrows: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'ACTIVE'] }, 1, 0]
+            }
+          }
+        }
+      },
+      {
+        $sort: { booksBorrowed: -1 }
+      },
+      {
+        $limit: 10
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userDetails'
+        }
+      },
+      {
+        $unwind: '$userDetails'
+      },
+      {
+        $project: {
+          user_id: '$_id',
+          name: '$userDetails.name',
+          books_borrowed: '$booksBorrowed',
+          current_borrows: '$currentBorrows'
+        }
+      }
+    ]);
+  } catch (error) {
+    throw new Error(`Error getting active users: ${error.message}`);
+  }
+};
+
+// For stats controller
+export const getLoanCountByStatus = async (status) => {
+  try {
+    return await Loan.countDocuments({ status });
+  } catch (error) {
+    throw new Error(`Error counting loans by status: ${error.message}`);
+  }
+};
+
+// For stats controller
+export const getLoansToday = async () => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return await Loan.countDocuments({
+      issueDate: { $gte: today }
+    });
+  } catch (error) {
+    throw new Error(`Error counting loans today: ${error.message}`);
+  }
+};
+
+// For stats controller
+export const getReturnsToday = async () => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return await Loan.countDocuments({
+      returnDate: { $gte: today }
+    });
+  } catch (error) {
+    throw new Error(`Error counting returns today: ${error.message}`);
   }
 };

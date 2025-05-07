@@ -113,3 +113,71 @@ export const deleteBook = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Find book by ID - for loan controller to use
+export const findBookById = async (bookId) => {
+  try {
+    return await Book.findById(bookId);
+  } catch (error) {
+    throw new Error(`Error finding book: ${error.message}`);
+  }
+};
+
+// Update book availability - for loan controller
+export const decreaseBookAvailability = async (bookId, session = null) => {
+  try {
+    const book = await Book.findById(bookId);
+    if (!book) {
+      throw new Error('Book not found');
+    }
+    if (book.availableCopies <= 0) {
+      throw new Error('Book is not available for loan');
+    }
+    book.availableCopies -= 1;
+    if (session) {
+      await book.save({ session });
+    } else {
+      await book.save();
+    }
+    return book;
+  } catch (error) {
+    throw new Error(`Error updating book availability: ${error.message}`);
+  }
+};
+
+// Increase book availability when returned - for loan controller
+export const increaseBookAvailability = async (bookId, session = null) => {
+  try {
+    const book = await Book.findById(bookId);
+    if (!book) {
+      throw new Error('Book not found');
+    }
+    book.availableCopies += 1;
+    if (session) {
+      await book.save({ session });
+    } else {
+      await book.save();
+    }
+    return book;
+  } catch (error) {
+    throw new Error(`Error updating book availability: ${error.message}`);
+  }
+};
+
+// Get book stats - for stats controller
+export const getBookStats = async () => {
+  try {
+    const stats = await Book.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$copies' },
+          available: { $sum: '$availableCopies' }
+        }
+      }
+    ]);
+    return stats[0] || { total: 0, available: 0 };
+  } catch (error) {
+    throw new Error(`Error getting book stats: ${error.message}`);
+  }
+};

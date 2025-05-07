@@ -30,7 +30,7 @@ import statsRoutes from './routes/statsRoutes.js';
 // Use routes
 app.use('/api/users', userRoutes);
 app.use('/api/books', bookRoutes);
-app.use('/api', loanRoutes);
+app.use('/api/loans', loanRoutes);
 app.use('/api/stats', statsRoutes);
 
 // Error handling middleware
