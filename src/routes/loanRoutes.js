@@ -5,7 +5,8 @@ import {
   returnBook,
   getUserLoans,
   getOverdueLoans,
-  extendLoan
+  extendLoan,
+  updateLoan
 } from '../controllers/loanController.js';
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.post('/', validateLoan, createLoan);
 router.post('/returns', validateReturn, returnBook);
 router.get('/overdue', getOverdueLoans);
 router.get('/:userId', getUserLoans);
+router.patch('/:id/update', updateLoan);
 router.put('/:id/extend', extendLoan);
 
 export default router; 

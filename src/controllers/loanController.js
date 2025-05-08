@@ -36,6 +36,46 @@ export const createLoan = async (req, res) => {
   }
 };
 
+
+export const updateLoan = async (req, res) => {
+  try {
+    const { id } = req.params; // comes from /loans/:id
+    const { dueDate } = req.body;
+    
+    const updateData = {};
+    if (dueDate) {
+      updateData.dueDate = new Date(Date.parse(dueDate)); // Ensures proper date parsing
+
+
+      // Check if the new due date makes the loan overdue
+      if (updateData.dueDate < new Date()) {
+        updateData.status = 'OVERDUE';
+      }
+    }
+
+    const updatedLoan = await Loan.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true }
+    );
+
+    console.log("Updated Loan:", updatedLoan); // Log the updated loan
+
+    if (!updatedLoan) {
+      return res.status(404).json({ message: 'Loan not found' });
+    }
+
+    res.json(updatedLoan);
+  } catch (err) {
+    console.error("Error updating loan:", err); // Log the error
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+
 // Return a book
 export const returnBook = async (req, res) => {
   const session = await mongoose.startSession();
@@ -124,6 +164,11 @@ export const getOverdueLoans = async (req, res) => {
 export const extendLoan = async (req, res) => {
   try {
     const { extension_days } = req.body;
+    
+    if (!extension_days || isNaN(extension_days) || extension_days <= 0) {
+      return res.status(400).json({ message: 'Invalid extension days' });
+    }
+
     const loan = await Loan.findById(req.params.id);
 
     if (!loan) {
@@ -139,8 +184,8 @@ export const extendLoan = async (req, res) => {
     }
 
     const originalDueDate = loan.dueDate;
-    const newDueDate = new Date(loan.dueDate);
-    newDueDate.setDate(newDueDate.getDate() + extension_days);
+    const newDueDate = new Date(originalDueDate);
+    newDueDate.setDate(originalDueDate.getDate() + parseInt(extension_days));
 
     // Increment extensions count
     loan.extensionsCount += 1;

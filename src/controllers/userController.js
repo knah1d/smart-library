@@ -4,7 +4,7 @@ import User from '../models/User.js';
 export const createUser = async (req, res) => {
   try {
     const { name, email, role } = req.body;
-    
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email already exists' });
@@ -30,7 +30,7 @@ export const getUserById = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-};  
+};
 
 // Update user
 export const updateUser = async (req, res) => {
@@ -44,10 +44,28 @@ export const updateUser = async (req, res) => {
       if (existingUser) return res.status(400).json({ message: 'Email already in use' });
     }
 
+    const { role } = req.body;
+    if (role !== undefined) {
+      const validRoles = ['student', 'faculty'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: 'Invalid role' });
+      }
+      // Only check for role restrictions if the role is being changed
+     
+        if (role === 'faculty' && user.role == 'faculty') {
+          return res.status(403).json({ message: 'Already assigned as a faculty' });
+        }
+        if (role === 'student' && user.role == 'student') {
+          return res.status(403).json({ message: 'Already assigned as a student' });
+        }
+      
+    }
+
     const updates = {};
     if (req.body.name !== undefined) updates.name = req.body.name;
     if (req.body.email !== undefined) updates.email = req.body.email;
-    if (req.body.role !== undefined) updates.role = req.body.role;
+    if (role !== undefined) updates.role = role;
+
 
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
