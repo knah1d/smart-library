@@ -14,6 +14,6 @@ const validateUser = [
 // Routes
 router.post('/', validateUser, createUser);
 router.get('/:id', getUserById);
-router.put('/:id', validateUser, updateUser);
+router.patch('/:id', validateUser, updateUser);
 
 export default router; 
