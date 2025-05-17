@@ -49,8 +49,25 @@ export const increaseBookAvailability = async (bookId) => {
   }
 };
 
+export const updateBookAvailability = async (
+  bookId,
+  availableCopies,
+  operation
+) => {
+  try {
+    const response = await bookApiClient.patch(
+      `/books/${bookId}/availability`,
+      { available_copies: availableCopies, operation }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(`Error updating book availability: ${error.message}`);
+  }
+};
+
 export default {
   getBookById,
   decreaseBookAvailability,
   increaseBookAvailability,
+  updateBookAvailability,
 };

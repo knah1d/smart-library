@@ -1,4 +1,4 @@
-import User from '../models/User.js';
+import User from "../models/User.js";
 
 // Create a new user
 export const createUser = async (req, res) => {
@@ -7,7 +7,9 @@ export const createUser = async (req, res) => {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User with this email already exists' });
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists" });
     }
 
     const user = new User({ name, email, role });
@@ -24,7 +26,7 @@ export const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
     res.json(user);
   } catch (error) {
@@ -37,12 +39,14 @@ export const getUserByEmail = async (req, res) => {
   try {
     const { email } = req.query;
     if (!email) {
-      return res.status(400).json({ message: 'Email query parameter is required' });
+      return res
+        .status(400)
+        .json({ message: "Email query parameter is required" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
     res.json(user);
   } catch (error) {
@@ -50,48 +54,53 @@ export const getUserByEmail = async (req, res) => {
   }
 };
 
-
 // Update user
 export const updateUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const { name, email, role } = req.body;
+    const validRoles = ["student", "faculty"];
 
-    const { email } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Check if email is being changed and if it's already in use
     if (email && email !== user.email) {
       const existingUser = await User.findOne({ email });
-      if (existingUser) return res.status(400).json({ message: 'Email already in use' });
-    }
-
-    const { role } = req.body;
-    if (role !== undefined) {
-      const validRoles = ['student', 'faculty'];
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({ message: 'Invalid role' });
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already in use" });
       }
-      // Only check for role restrictions if the role is being changed
-     
-        if (role === 'faculty' && user.role == 'faculty') {
-          return res.status(403).json({ message: 'Already assigned as a faculty' });
-        }
-        if (role === 'student' && user.role == 'student') {
-          return res.status(403).json({ message: 'Already assigned as a student' });
-        }
-      
     }
 
+    // Role validation
+    if (role) {
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      if (role === user.role) {
+        return res
+          .status(403)
+          .json({ message: `Already assigned as a ${role}` });
+      }
+    }
+
+    // Build update object only with fields that are explicitly provided in the request
+    // Don't include undefined values or empty strings that would overwrite existing data
     const updates = {};
-    if (req.body.name !== undefined) updates.name = req.body.name;
-    if (req.body.email !== undefined) updates.email = req.body.email;
-    if (role !== undefined) updates.role = role;
+    if (name !== undefined && name !== "") updates.name = name;
+    if (email !== undefined && email !== "") updates.email = email;
+    if (role !== undefined && role !== "") updates.role = role;
 
-
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      updates,
-      { new: true }
-    );
-    res.json(updatedUser);
+    // Only update if we have something to update
+    if (Object.keys(updates).length > 0) {
+      const updatedUser = await User.findByIdAndUpdate(req.params.id, updates, {
+        new: true,
+        runValidators: true,
+      });
+      res.json(updatedUser);
+    } else {
+      // If no updates were provided, just return the current user
+      res.json(user);
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
