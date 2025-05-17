@@ -3,8 +3,6 @@ import mongoose from "mongoose";
 import { getUserById } from "../services/UserApi.js";
 import {
   getBookById,
-  decreaseBookAvailability,
-  increaseBookAvailability,
   updateBookAvailability,
 } from "../services/BookApi.js";
 
