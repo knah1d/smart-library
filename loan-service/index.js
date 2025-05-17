@@ -22,16 +22,13 @@ app.use(express.json());
 // });
 
 // Import routes
-import userRoutes from './routes/userRoutes.js';
-import bookRoutes from './routes/bookRoutes.js';
+
 import loanRoutes from './routes/loanRoutes.js';
-import statsRoutes from './routes/statsRoutes.js';
 
 // Use routes
-app.use('/api/users', userRoutes);
-app.use('/api/books', bookRoutes);
+
 app.use('/api/loans', loanRoutes);
-app.use('/api/stats', statsRoutes);
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {

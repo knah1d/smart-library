@@ -1,19 +1,19 @@
 import Loan from '../models/Loan.js';
 import mongoose from 'mongoose';
-import { findUserById } from './userController.js';
-import { findBookById, decreaseBookAvailability, increaseBookAvailability } from './bookController.js';
+import { getUserById } from '../services/UserApi.js';
+import { getBookById, decreaseBookAvailability, increaseBookAvailability } from '../services/BookApi.js';
 
 // Create a new loan
 export const createLoan = async (req, res) => {
   try {
     const { user_id, book_id, due_date } = req.body;
 
-    const user = await findUserById(user_id);
+    const user = await getUserById(user_id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const book = await findBookById(book_id);
+    const book = await getBookById(book_id);
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
@@ -71,10 +71,6 @@ export const updateLoan = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-
-
-
 
 // Return a book
 export const returnBook = async (req, res) => {

@@ -143,6 +143,9 @@ const BookSection = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Book ID
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Title
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -160,6 +163,9 @@ const BookSection = () => {
               {books.length > 0 ? (
                 books.map((book) => (
                   <tr key={book._id || book.id}>
+                     <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      {book._id}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
                       {book.title}
                     </td>

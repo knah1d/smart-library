@@ -1,13 +1,15 @@
-import Book from '../models/Book.js';
+import Book from "../models/Book.js";
 
 // Create a new book
 export const createBook = async (req, res) => {
   try {
     const { title, author, isbn, copies } = req.body;
-    
+
     const existingBook = await Book.findOne({ isbn });
     if (existingBook) {
-      return res.status(400).json({ message: 'Book with this ISBN already exists' });
+      return res
+        .status(400)
+        .json({ message: "Book with this ISBN already exists" });
     }
 
     const book = new Book({
@@ -34,9 +36,9 @@ export const getBooks = async (req, res) => {
     if (search) {
       query = {
         $or: [
-          { title: { $regex: search, $options: 'i' } },
-          { author: { $regex: search, $options: 'i' } },
-        ]
+          { title: { $regex: search, $options: "i" } },
+          { author: { $regex: search, $options: "i" } },
+        ],
       };
     }
 
@@ -52,7 +54,7 @@ export const getBookById = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
     if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
+      return res.status(404).json({ message: "Book not found" });
     }
     res.json(book);
   } catch (error) {
@@ -67,13 +69,13 @@ export const updateBook = async (req, res) => {
     const book = await Book.findById(req.params.id);
 
     if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
+      return res.status(404).json({ message: "Book not found" });
     }
 
     if (isbn && isbn !== book.isbn) {
       const existingBook = await Book.findOne({ isbn });
       if (existingBook) {
-        return res.status(400).json({ message: 'ISBN already in use' });
+        return res.status(400).json({ message: "ISBN already in use" });
       }
     }
 
@@ -83,7 +85,9 @@ export const updateBook = async (req, res) => {
     if (copies !== undefined) book.copies = copies;
     if (available_copies !== undefined) {
       if (available_copies > book.copies) {
-        return res.status(400).json({ message: 'Available copies cannot exceed total copies' });
+        return res
+          .status(400)
+          .json({ message: "Available copies cannot exceed total copies" });
       }
       book.availableCopies = available_copies;
     }
@@ -100,38 +104,31 @@ export const deleteBook = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
     if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
+      return res.status(404).json({ message: "Book not found" });
     }
 
     if (book.copies !== book.availableCopies) {
-      return res.status(400).json({ message: 'Cannot delete book with active loans' });
+      return res
+        .status(400)
+        .json({ message: "Cannot delete book with active loans" });
     }
 
     await book.deleteOne();
-    res.status(201).json({ message: 'Book deleted successfully' });
+    res.status(201).json({ message: "Book deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Find book by ID - for loan controller to use
-export const findBookById = async (bookId) => {
-  try {
-    return await Book.findById(bookId);
-  } catch (error) {
-    throw new Error(`Error finding book: ${error.message}`);
-  }
-};
-
-// Update book availability - for loan controller
+// decrease book availability - for loan controller
 export const decreaseBookAvailability = async (bookId, session = null) => {
   try {
     const book = await Book.findById(bookId);
     if (!book) {
-      throw new Error('Book not found');
+      throw new Error("Book not found");
     }
     if (book.availableCopies <= 0) {
-      throw new Error('Book is not available for loan');
+      throw new Error("Book is not available for loan");
     }
     book.availableCopies -= 1;
     if (session) {
@@ -150,7 +147,7 @@ export const increaseBookAvailability = async (bookId, session = null) => {
   try {
     const book = await Book.findById(bookId);
     if (!book) {
-      throw new Error('Book not found');
+      throw new Error("Book not found");
     }
     book.availableCopies += 1;
     if (session) {
@@ -164,6 +161,26 @@ export const increaseBookAvailability = async (bookId, session = null) => {
   }
 };
 
+// API Endpoint handlers for availability
+export const decreaseAvailabilityEndpoint = async (req, res) => {
+  try {
+    const bookId = req.params.id;
+    const book = await decreaseBookAvailability(bookId);
+    res.json(book);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const increaseAvailabilityEndpoint = async (req, res) => {
+  try {
+    const bookId = req.params.id;
+    const book = await increaseBookAvailability(bookId);
+    res.json(book);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
 
 // Get popular books
 export const getPopularBooks = async (req, res) => {
@@ -182,10 +199,10 @@ export const getBookStats = async () => {
       {
         $group: {
           _id: null,
-          total: { $sum: '$copies' },
-          available: { $sum: '$availableCopies' }
-        }
-      }
+          total: { $sum: "$copies" },
+          available: { $sum: "$availableCopies" },
+        },
+      },
     ]);
     return stats[0] || { total: 0, available: 0 };
   } catch (error) {
