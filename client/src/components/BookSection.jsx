@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { bookAPI } from "../services/book-api.js";
 
 const BookSection = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [pagination, setPagination] = useState({
+    page: 1,
+    perPage: 10,
+    total: 0,
+  });
   const [newBook, setNewBook] = useState({
     title: "",
     author: "",
@@ -12,12 +18,29 @@ const BookSection = () => {
     copies: 1,
   });
 
-  const fetchBooks = async () => {
+  useEffect(() => {
+    fetchBooks();
+  }, [pagination.page, pagination.perPage]);
+
+  const fetchBooks = async (search = searchTerm) => {
     setLoading(true);
     setError("");
     try {
-      const data = await bookAPI.getBooks();
-      setBooks(data);
+      const data = await bookAPI.getBooks(
+        search,
+        pagination.page,
+        pagination.perPage
+      );
+      // Check if the response is in the new format or old format
+      if (data.books) {
+        setBooks(data.books);
+        setPagination({
+          ...pagination,
+          total: data.total || 0,
+        });
+      } else {
+        setBooks(data);
+      }
     } catch (err) {
       setError("Failed to fetch books");
       console.error(err);
@@ -41,7 +64,9 @@ const BookSection = () => {
     try {
       await bookAPI.createBook(newBook);
       setNewBook({ title: "", author: "", isbn: "", copies: 1 });
-      fetchBooks(); // Refresh the book list
+      // Refresh the book list and reset to first page
+      setPagination({ ...pagination, page: 1 });
+      fetchBooks();
     } catch (err) {
       setError("Failed to add book");
       console.error(err);
@@ -53,6 +78,36 @@ const BookSection = () => {
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
       <h2 className="text-xl font-bold mb-4">Books</h2>
+
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Search books by title or author..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-grow px-4 py-2 border rounded-md"
+          />
+          <button
+            onClick={() => fetchBooks(searchTerm)}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Search
+          </button>
+          {searchTerm && (
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                fetchBooks("");
+              }}
+              className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-2">Add New Book</h3>
@@ -157,14 +212,20 @@ const BookSection = () => {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Copies
                 </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Updated
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {books.length > 0 ? (
                 books.map((book) => (
                   <tr key={book._id || book.id}>
-                     <td className="px-3 py-2 whitespace-nowrap text-sm">
-                      {book._id}
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      {book._id || book.id}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
                       {book.title}
@@ -176,13 +237,25 @@ const BookSection = () => {
                       {book.isbn}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
-                      {book.copies}
+                      {book.copies || 0} (
+                      {book.availableCopies || book.available_copies || 0}{" "}
+                      available)
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      {book.created_at
+                        ? new Date(book.created_at).toLocaleDateString()
+                        : "N/A"}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      {book.updated_at
+                        ? new Date(book.updated_at).toLocaleDateString()
+                        : "N/A"}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="px-3 py-2 text-center text-sm">
+                  <td colSpan="7" className="px-3 py-2 text-center text-sm">
                     {loading
                       ? "Loading books..."
                       : "No books found. Click Refresh to load books."}
@@ -192,6 +265,45 @@ const BookSection = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {pagination.total > 0 && (
+          <div className="mt-4 flex justify-between items-center">
+            <div>
+              <span className="text-sm text-gray-700">
+                Showing page {pagination.page} of{" "}
+                {Math.ceil(pagination.total / pagination.perPage)}(
+                {pagination.total} total books)
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() =>
+                  setPagination({
+                    ...pagination,
+                    page: Math.max(1, pagination.page - 1),
+                  })
+                }
+                disabled={pagination.page <= 1}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() =>
+                  setPagination({ ...pagination, page: pagination.page + 1 })
+                }
+                disabled={
+                  pagination.page >=
+                  Math.ceil(pagination.total / pagination.perPage)
+                }
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
