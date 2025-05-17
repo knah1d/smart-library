@@ -1,7 +1,12 @@
-import Loan from '../models/Loan.js';
-import mongoose from 'mongoose';
-import { getUserById } from '../services/UserApi.js';
-import { getBookById, decreaseBookAvailability, increaseBookAvailability } from '../services/BookApi.js';
+import Loan from "../models/Loan.js";
+import mongoose from "mongoose";
+import { getUserById } from "../services/UserApi.js";
+import {
+  getBookById,
+  decreaseBookAvailability,
+  increaseBookAvailability,
+  updateBookAvailability,
+} from "../services/BookApi.js";
 
 // Create a new loan
 export const createLoan = async (req, res) => {
@@ -10,24 +15,27 @@ export const createLoan = async (req, res) => {
 
     const user = await getUserById(user_id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const book = await getBookById(book_id);
     if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
+      return res.status(404).json({ message: "Book not found" });
     }
     if (book.availableCopies <= 0) {
-      return res.status(400).json({ message: 'Book is not available for loan' });
+      return res
+        .status(400)
+        .json({ message: "Book is not available for loan" });
     }
 
     const loan = new Loan({
       user: user_id,
       book: book_id,
-      dueDate: due_date
+      dueDate: due_date,
     });
 
-    await decreaseBookAvailability(book_id);
+    // Use the new updateBookAvailability method with 'decrement' operation
+    await updateBookAvailability(book_id, null, "decrement");
     await loan.save();
 
     res.status(201).json(loan);
@@ -36,20 +44,55 @@ export const createLoan = async (req, res) => {
   }
 };
 
+// Get details of a specific loan.
 
+export const getLoanById = async (req, res) => {
+  try {
+    const { id } = req.params; // comes from /loans/:id
+    const loan = await Loan.findById(id);
+    if (!loan) {
+      return res.status(404).json({ message: "Loan not found" });
+    }
+    const book = await getBookById(loan.book);
+    const user = await getUserById(loan.user);
+    if (!book || !user) {
+      return res.status(404).json({ message: "Book or User not found" });
+    }
+    res.json({
+      id: loan._id,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+      book: {
+        id: book._id,
+        title: book.title,
+        author: book.author,
+      },
+      issue_date: loan.issueDate.toISOString(),
+      due_date: loan.dueDate.toISOString(),
+      return_date: loan.returnDate ? loan.returnDate.toISOString() : null,
+      status: loan.status,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update loan details
 export const updateLoan = async (req, res) => {
   try {
     const { id } = req.params; // comes from /loans/:id
     const { dueDate } = req.body;
-    
+
     const updateData = {};
     if (dueDate) {
       updateData.dueDate = new Date(Date.parse(dueDate)); // Ensures proper date parsing
 
-
       // Check if the new due date makes the loan overdue
       if (updateData.dueDate < new Date()) {
-        updateData.status = 'OVERDUE';
+        updateData.status = "OVERDUE";
       }
     }
 
@@ -62,7 +105,7 @@ export const updateLoan = async (req, res) => {
     console.log("Updated Loan:", updatedLoan); // Log the updated loan
 
     if (!updatedLoan) {
-      return res.status(404).json({ message: 'Loan not found' });
+      return res.status(404).json({ message: "Loan not found" });
     }
 
     res.json(updatedLoan);
@@ -80,17 +123,18 @@ export const returnBook = async (req, res) => {
   try {
     const { loan_id } = req.body;
     const loan = await Loan.findById(loan_id);
-    
+
     if (!loan) {
       await session.abortTransaction();
-      return res.status(404).json({ message: 'Loan not found' });
+      return res.status(404).json({ message: "Loan not found" });
     }
 
-    loan.status = 'RETURNED';
+    loan.status = "RETURNED";
     loan.returnDate = new Date();
     await loan.save({ session });
 
-    await increaseBookAvailability(loan.book, session);
+    // Use the new updateBookAvailability method with 'increment' operation
+    await updateBookAvailability(loan.book, null, "increment");
 
     await session.commitTransaction();
     res.json(loan);
@@ -105,11 +149,49 @@ export const returnBook = async (req, res) => {
 // Get user's loan history
 export const getUserLoans = async (req, res) => {
   try {
-    const loans = await Loan.find({ user: req.params.userId })
-      .populate('book', 'title author')
-      .sort({ issueDate: -1 });
+    const loans = await Loan.find({ user: req.params.userId }).sort({
+      issueDate: -1,
+    });
 
-    res.json(loans);
+    // Format loans to match the required response structure
+    const formattedLoans = await Promise.all(
+      loans.map(async (loan) => {
+        // Fetch book details from book service
+        let bookDetails = {
+          id: loan.book,
+          title: "Unknown",
+          author: "Unknown",
+        };
+        try {
+          const book = await getBookById(loan.book);
+          if (book) {
+            bookDetails = {
+              id: book._id,
+              title: book.title,
+              author: book.author,
+            };
+          }
+        } catch (error) {
+          console.error(`Error fetching book details: ${error.message}`);
+        }
+
+        // Format the loan object to match the required structure
+        return {
+          id: loan._id,
+          book: bookDetails,
+          issue_date: loan.issueDate.toISOString(),
+          due_date: loan.dueDate.toISOString(),
+          return_date: loan.returnDate ? loan.returnDate.toISOString() : null,
+          status: loan.status,
+        };
+      })
+    );
+
+    // Return the formatted response with total count
+    res.json({
+      loans: formattedLoans,
+      total: formattedLoans.length,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -121,34 +203,66 @@ export const getOverdueLoans = async (req, res) => {
     const now = new Date();
     const overdueLoans = await Loan.find({
       dueDate: { $lt: now },
-      status: { $in: ['ACTIVE', 'OVERDUE'] }
-    })
-    .populate('user', 'name email')
-    .populate('book', 'title author')
-    .sort({ dueDate: 1 });
+      status: { $in: ["ACTIVE", "OVERDUE"] },
+    }).sort({ dueDate: 1 });
 
-    const formattedLoans = overdueLoans.map(loan => {
-      const dueDate = new Date(loan.dueDate);
-      const diffTime = Math.abs(now - dueDate);
-      const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // Manually fetch user and book details
+    const formattedLoans = await Promise.all(
+      overdueLoans.map(async (loan) => {
+        const dueDate = new Date(loan.dueDate);
+        const diffTime = Math.abs(now - dueDate);
+        const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      return {
-        id: loan._id,
-        user: {
-          id: loan.user._id,
-          name: loan.user.name,
-          email: loan.user.email
-        },
-        book: {
-          id: loan.book._id,
-          title: loan.book.title,
-          author: loan.book.author
-        },
-        issue_date: loan.issueDate.toISOString(),
-        due_date: loan.dueDate.toISOString(),
-        days_overdue: daysOverdue
-      };
-    });
+        // Fetch user details
+        let userName = "Unknown";
+        let userEmail = "unknown@example.com";
+        let userId = loan.user;
+
+        try {
+          const user = await getUserById(loan.user);
+          if (user) {
+            userName = user.name;
+            userEmail = user.email;
+            userId = user._id;
+          }
+        } catch (error) {
+          console.error(`Error fetching user details: ${error.message}`);
+        }
+
+        // Fetch book details
+        let bookTitle = "Unknown";
+        let bookAuthor = "Unknown";
+        let bookId = loan.book;
+
+        try {
+          const book = await getBookById(loan.book);
+          if (book) {
+            bookTitle = book.title;
+            bookAuthor = book.author;
+            bookId = book._id;
+          }
+        } catch (error) {
+          console.error(`Error fetching book details: ${error.message}`);
+        }
+
+        return {
+          id: loan._id,
+          user: {
+            id: userId,
+            name: userName,
+            email: userEmail,
+          },
+          book: {
+            id: bookId,
+            title: bookTitle,
+            author: bookAuthor,
+          },
+          issue_date: loan.issueDate.toISOString(),
+          due_date: loan.dueDate.toISOString(),
+          days_overdue: daysOverdue,
+        };
+      })
+    );
 
     res.json(formattedLoans);
   } catch (error) {
@@ -160,23 +274,27 @@ export const getOverdueLoans = async (req, res) => {
 export const extendLoan = async (req, res) => {
   try {
     const { extension_days } = req.body;
-    
+
     if (!extension_days || isNaN(extension_days) || extension_days <= 0) {
-      return res.status(400).json({ message: 'Invalid extension days' });
+      return res.status(400).json({ message: "Invalid extension days" });
     }
 
     const loan = await Loan.findById(req.params.id);
 
     if (!loan) {
-      return res.status(404).json({ message: 'Loan not found' });
+      return res.status(404).json({ message: "Loan not found" });
     }
 
-    if (!['ACTIVE', 'OVERDUE'].includes(loan.status)) {
-      return res.status(400).json({ message: 'Can only extend active or overdue loans' });
+    if (!["ACTIVE", "OVERDUE"].includes(loan.status)) {
+      return res
+        .status(400)
+        .json({ message: "Can only extend active or overdue loans" });
     }
 
     if (loan.extensionsCount >= 2) {
-      return res.status(400).json({ message: 'Maximum number of extensions reached' });
+      return res
+        .status(400)
+        .json({ message: "Maximum number of extensions reached" });
     }
 
     const originalDueDate = loan.dueDate;
@@ -186,7 +304,7 @@ export const extendLoan = async (req, res) => {
     // Increment extensions count
     loan.extensionsCount += 1;
     loan.dueDate = newDueDate;
-    loan.status = 'ACTIVE';
+    loan.status = "ACTIVE";
     await loan.save();
 
     res.json({
@@ -197,7 +315,7 @@ export const extendLoan = async (req, res) => {
       original_due_date: originalDueDate.toISOString(),
       extended_due_date: loan.dueDate.toISOString(),
       status: loan.status,
-      extensions_count: loan.extensionsCount
+      extensions_count: loan.extensionsCount,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -207,39 +325,46 @@ export const extendLoan = async (req, res) => {
 // For stats controller
 export const getPopularBooksData = async () => {
   try {
-    return await Loan.aggregate([
+    // Get the most borrowed books
+    const popularBookIds = await Loan.aggregate([
       {
         $group: {
-          _id: '$book',
-          borrowCount: { $sum: 1 }
-        }
+          _id: "$book",
+          borrowCount: { $sum: 1 },
+        },
       },
       {
-        $sort: { borrowCount: -1 }
+        $sort: { borrowCount: -1 },
       },
       {
-        $limit: 10
+        $limit: 10,
       },
-      {
-        $lookup: {
-          from: 'books',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'bookDetails'
-        }
-      },
-      {
-        $unwind: '$bookDetails'
-      },
-      {
-        $project: {
-          book_id: '$_id',
-          title: '$bookDetails.title',
-          author: '$bookDetails.author',
-          borrow_count: '$borrowCount'
-        }
-      }
     ]);
+
+    // Manually fetch book details from book service
+    const popularBooks = await Promise.all(
+      popularBookIds.map(async (item) => {
+        try {
+          const book = await getBookById(item._id);
+          return {
+            book_id: item._id,
+            title: book ? book.title : "Unknown",
+            author: book ? book.author : "Unknown",
+            borrow_count: item.borrowCount,
+          };
+        } catch (error) {
+          console.error(`Error fetching book details: ${error.message}`);
+          return {
+            book_id: item._id,
+            title: "Unknown",
+            author: "Unknown",
+            borrow_count: item.borrowCount,
+          };
+        }
+      })
+    );
+
+    return popularBooks;
   } catch (error) {
     throw new Error(`Error getting popular books: ${error.message}`);
   }
@@ -248,44 +373,51 @@ export const getPopularBooksData = async () => {
 // For stats controller
 export const getActiveUsersData = async () => {
   try {
-    return await Loan.aggregate([
+    // Get the most active users
+    const activeUserIds = await Loan.aggregate([
       {
         $group: {
-          _id: '$user',
+          _id: "$user",
           booksBorrowed: { $sum: 1 },
           currentBorrows: {
             $sum: {
-              $cond: [{ $eq: ['$status', 'ACTIVE'] }, 1, 0]
-            }
-          }
-        }
+              $cond: [{ $eq: ["$status", "ACTIVE"] }, 1, 0],
+            },
+          },
+        },
       },
       {
-        $sort: { booksBorrowed: -1 }
+        $sort: { booksBorrowed: -1 },
       },
       {
-        $limit: 10
+        $limit: 10,
       },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'userDetails'
-        }
-      },
-      {
-        $unwind: '$userDetails'
-      },
-      {
-        $project: {
-          user_id: '$_id',
-          name: '$userDetails.name',
-          books_borrowed: '$booksBorrowed',
-          current_borrows: '$currentBorrows'
-        }
-      }
     ]);
+
+    // Manually fetch user details from user service
+    const activeUsers = await Promise.all(
+      activeUserIds.map(async (item) => {
+        try {
+          const user = await getUserById(item._id);
+          return {
+            user_id: item._id,
+            name: user ? user.name : "Unknown",
+            books_borrowed: item.booksBorrowed,
+            current_borrows: item.currentBorrows,
+          };
+        } catch (error) {
+          console.error(`Error fetching user details: ${error.message}`);
+          return {
+            user_id: item._id,
+            name: "Unknown",
+            books_borrowed: item.booksBorrowed,
+            current_borrows: item.currentBorrows,
+          };
+        }
+      })
+    );
+
+    return activeUsers;
   } catch (error) {
     throw new Error(`Error getting active users: ${error.message}`);
   }
@@ -306,7 +438,7 @@ export const getLoansToday = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return await Loan.countDocuments({
-      issueDate: { $gte: today }
+      issueDate: { $gte: today },
     });
   } catch (error) {
     throw new Error(`Error counting loans today: ${error.message}`);
@@ -319,7 +451,7 @@ export const getReturnsToday = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return await Loan.countDocuments({
-      returnDate: { $gte: today }
+      returnDate: { $gte: today },
     });
   } catch (error) {
     throw new Error(`Error counting returns today: ${error.message}`);

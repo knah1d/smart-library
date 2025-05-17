@@ -21,7 +21,19 @@ export const createBook = async (req, res) => {
     });
     await book.save();
 
-    res.status(201).json(book);
+    // Format response to be consistent with other endpoints
+    const formattedBook = {
+      id: book._id,
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn,
+      copies: book.copies,
+      available_copies: book.availableCopies,
+      created_at: book.createdAt.toISOString(),
+      updated_at: book.updatedAt.toISOString(),
+    };
+
+    res.status(201).json(formattedBook);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -30,7 +42,7 @@ export const createBook = async (req, res) => {
 // Get all books with search functionality
 export const getBooks = async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, page = 1, per_page = 10 } = req.query;
     let query = {};
 
     if (search) {
@@ -42,8 +54,35 @@ export const getBooks = async (req, res) => {
       };
     }
 
-    const books = await Book.find(query);
-    res.json(books);
+    // Calculate pagination
+    const pageNum = parseInt(page);
+    const limit = parseInt(per_page);
+    const skip = (pageNum - 1) * limit;
+
+    // Get total count
+    const total = await Book.countDocuments(query);
+
+    // Get paginated results
+    const books = await Book.find(query).skip(skip).limit(limit);
+
+    // Format the response
+    const formattedBooks = books.map((book) => ({
+      id: book._id,
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn,
+      copies: book.copies,
+      available_copies: book.availableCopies,
+      created_at: book.createdAt.toISOString(),
+      updated_at: book.updatedAt.toISOString(),
+    }));
+
+    res.json({
+      books: formattedBooks,
+      total,
+      page: pageNum,
+      per_page: limit,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -56,7 +95,20 @@ export const getBookById = async (req, res) => {
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
-    res.json(book);
+
+    // Format response to match the structure used in getBooks
+    const formattedBook = {
+      id: book._id,
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn,
+      copies: book.copies,
+      available_copies: book.availableCopies,
+      created_at: book.createdAt.toISOString(),
+      updated_at: book.updatedAt.toISOString(),
+    };
+
+    res.json(formattedBook);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -93,7 +145,20 @@ export const updateBook = async (req, res) => {
     }
 
     await book.save();
-    res.json(book);
+
+    // Format response to be consistent with other endpoints
+    const formattedBook = {
+      id: book._id,
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn,
+      copies: book.copies,
+      available_copies: book.availableCopies,
+      created_at: book.createdAt.toISOString(),
+      updated_at: book.updatedAt.toISOString(),
+    };
+
+    res.json(formattedBook);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -166,7 +231,20 @@ export const decreaseAvailabilityEndpoint = async (req, res) => {
   try {
     const bookId = req.params.id;
     const book = await decreaseBookAvailability(bookId);
-    res.json(book);
+
+    // Format response to be consistent with other endpoints
+    const formattedBook = {
+      id: book._id,
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn,
+      copies: book.copies,
+      available_copies: book.availableCopies,
+      created_at: book.createdAt.toISOString(),
+      updated_at: book.updatedAt.toISOString(),
+    };
+
+    res.json(formattedBook);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -176,7 +254,20 @@ export const increaseAvailabilityEndpoint = async (req, res) => {
   try {
     const bookId = req.params.id;
     const book = await increaseBookAvailability(bookId);
-    res.json(book);
+
+    // Format response to be consistent with other endpoints
+    const formattedBook = {
+      id: book._id,
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn,
+      copies: book.copies,
+      available_copies: book.availableCopies,
+      created_at: book.createdAt.toISOString(),
+      updated_at: book.updatedAt.toISOString(),
+    };
+
+    res.json(formattedBook);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -207,5 +298,52 @@ export const getBookStats = async () => {
     return stats[0] || { total: 0, available: 0 };
   } catch (error) {
     throw new Error(`Error getting book stats: ${error.message}`);
+  }
+};
+
+// Update book availability
+export const updateBookAvailability = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { operation } = req.body;
+
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+    // Direct update to specific value
+   
+    
+    // Update availability based on operation
+    if (operation === "increment") {
+       if (book.availableCopies >= book.copies) {
+      return res.status(400).json({
+        message: "Available copies cannot exceed total copies",
+      });
+    }
+      book.availableCopies += 1;
+    } else if (operation === "decrement") {
+      if (book.availableCopies <= 0) {
+        return res
+          .status(400)
+          .json({ message: "No available copies to decrease" });
+      }
+      book.availableCopies -= 1;
+    } else {
+      return res.status(400).json({
+        message: "Either operation or available_copies must be provided",
+      });
+    }
+
+    await book.save();
+
+    // Return simplified response as specified
+    res.json({
+      id: book._id,
+      available_copies: book.availableCopies,
+      updated_at: book.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
