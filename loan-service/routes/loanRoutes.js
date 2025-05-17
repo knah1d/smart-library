@@ -1,5 +1,4 @@
 import express from 'express';
-import { body } from 'express-validator';
 import {
   createLoan,
   returnBook,
@@ -8,20 +7,9 @@ import {
   extendLoan,
   updateLoan
 } from '../controllers/loanController.js';
+import { validateLoan, validateReturn } from '../middlewares/validation.js';
 
 const router = express.Router();
-
-// Validation middleware
-const validateLoan = [
-  body('user_id').notEmpty().withMessage('User ID is required'),
-  body('book_id').notEmpty().withMessage('Book ID is required'),
-  body('due_date').isISO8601().withMessage('Valid due date is required')
-];
-
-// Validation for return book
-const validateReturn = [
-  body('loan_id').notEmpty().withMessage('Loan ID is required')
-];
 
 // Routes
 router.post('/', validateLoan, createLoan);
