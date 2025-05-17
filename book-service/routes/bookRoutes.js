@@ -4,7 +4,8 @@ import {
   getBooks,
   getBookById,
   updateBook,
-  deleteBook
+  deleteBook,
+  getPopularBooks
 } from '../controllers/bookController.js';
 import { validateNewBook, validateBookUpdate } from '../middlewares/validation.js';
 
@@ -16,5 +17,6 @@ router.get('/', getBooks);
 router.get('/:id', getBookById);
 router.put('/:id', validateBookUpdate, updateBook);
 router.delete('/:id', deleteBook);
+router.get('/popular', getPopularBooks);
 
 export default router; 

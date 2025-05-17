@@ -164,6 +164,17 @@ export const increaseBookAvailability = async (bookId, session = null) => {
   }
 };
 
+
+// Get popular books
+export const getPopularBooks = async (req, res) => {
+  try {
+    const popularBooks = await getPopularBooksData();
+    res.json(popularBooks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Get book stats - for stats controller
 export const getBookStats = async () => {
   try {
