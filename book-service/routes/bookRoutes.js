@@ -9,6 +9,7 @@ import {
   decreaseAvailabilityEndpoint,
   increaseAvailabilityEndpoint,
   updateBookAvailability,
+  getBookStats,
 } from "../controllers/bookController.js";
 import {
   validateNewBook,
@@ -25,9 +26,11 @@ router.get("/:id", getBookById);
 router.put("/:id", validateBookUpdate, updateBook);
 router.delete("/:id", deleteBook);
 
+//stats routes
 router.get("/stats/popular", getPopularBooks);
+router.get("/stats", getBookStats);
 
-// Book availability endpoints
+// Book availability endpoints for loan service
 router.patch("/:id/decrease-availability", decreaseAvailabilityEndpoint);
 router.patch("/:id/increase-availability", increaseAvailabilityEndpoint);
 router.patch(

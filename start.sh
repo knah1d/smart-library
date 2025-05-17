@@ -19,6 +19,11 @@ echo "Starting Loan Service..."
 cd /home/nahid/Desktop/6th_SEM/DistSys/smart-library/loan-service
 PORT=8083 npm run dev &
 
+# Start Stat Service
+echo "Starting Stat Service..."
+cd /home/nahid/Desktop/6th_SEM/DistSys/smart-library/stat-service
+PORT=8084 npm run dev &
+
 
 # Start Client
 cd /home/nahid/Desktop/6th_SEM/DistSys/smart-library/client

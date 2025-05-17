@@ -107,7 +107,7 @@ export const updateUser = async (req, res) => {
 };
 
 // Count total users - for stats controller
-export const countUsers = async () => {
+export const countUsers = async (req, res) => {
   try {
     return await User.countDocuments();
   } catch (error) {

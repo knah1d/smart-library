@@ -4,7 +4,8 @@ import {
   getUserById,
   updateUser,
   getUserByEmail,
-  getActiveUsers
+  getActiveUsers,
+  countUsers
 } from "../controllers/userController.js";
 import { validateUser } from "../middlewares/validation.js";
 
@@ -14,6 +15,7 @@ const router = express.Router();
 router.post("/", validateUser, createUser);
 router.get("/:id", getUserById);
 router.get("/", getUserByEmail);
+router.get("/count", countUsers);
 router.patch("/:id", validateUser, updateUser);
 router.get("/active", getActiveUsers);
 

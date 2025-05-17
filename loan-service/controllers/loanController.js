@@ -79,7 +79,6 @@ export const createLoan = async (req, res) => {
 };
 
 // Get details of a specific loan.
-
 export const getLoanById = async (req, res) => {
   try {
     const { id } = req.params; // comes from /loans/:id

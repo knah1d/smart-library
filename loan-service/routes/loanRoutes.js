@@ -7,10 +7,21 @@ import {
   extendLoan,
   updateLoan,
   getLoanById,
+  getPopularBooksData,
+  getActiveUsersData,
+  getLoanCountByStatus,
+  getLoansToday,
+  getReturnsToday,
 } from "../controllers/loanController.js";
 import { validateLoan, validateReturn } from "../middlewares/validation.js";
 
 const router = express.Router();
+//stats routes
+router.get("/books/popular", getPopularBooksData);
+router.get("/active-users", getActiveUsersData);
+router.get("/count", getLoanCountByStatus);
+router.get("/today", getLoansToday);
+router.get("/returns/today", getReturnsToday);
 
 // Routes
 router.post("/", validateLoan, createLoan);

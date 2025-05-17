@@ -343,23 +343,7 @@ export const getPopularBooks = async (req, res) => {
   }
 };
 
-// Get book stats - for stats controller
-export const getBookStats = async () => {
-  try {
-    const stats = await Book.aggregate([
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$copies" },
-          available: { $sum: "$availableCopies" },
-        },
-      },
-    ]);
-    return stats[0] || { total: 0, available: 0 };
-  } catch (error) {
-    throw new Error(`Error getting book stats: ${error.message}`);
-  }
-};
+
 
 // Update book availability
 export const updateBookAvailability = async (req, res) => {
@@ -432,5 +416,24 @@ export const updateBookAvailability = async (req, res) => {
       });
     }
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+// Get book stats - for stats controller
+export const getBookStats = async () => {
+  try {
+    const stats = await Book.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$copies" },
+          available: { $sum: "$availableCopies" },
+        },
+      },
+    ]);
+    return stats[0] || { total: 0, available: 0 };
+  } catch (error) {
+    throw new Error(`Error getting book stats: ${error.message}`);
   }
 };
