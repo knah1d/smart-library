@@ -1,14 +1,11 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import connectDB from './config/database.js';
-
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import connectDB from "./config/database.js";
 
 dotenv.config();
 
-
 const app = express();
-
 
 connectDB();
 
@@ -22,22 +19,23 @@ app.use(express.json());
 // });
 
 // Import routes
-import userRoutes from './routes/userRoutes.js';
+import userRoutes from "./routes/userRoutes.js";
+import healthRoutes from "./routes/healthRoutes.js";
 
 // Use routes
-app.use('/api/users', userRoutes);
-
+app.use("/api/users", userRoutes);
+app.use("/api/health", healthRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: "Something went wrong!",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
   });
 });
 
 // Start the server
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
-}); 
+});

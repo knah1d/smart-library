@@ -13,12 +13,34 @@ export const createLoan = async (req, res) => {
   try {
     const { user_id, book_id, due_date } = req.body;
 
-    const user = await getUserById(user_id);
+    // Set timeout for user service call
+    const userTimeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("User service call timed out")),
+        process.env.USER_SERVICE_TIMEOUT || 3000
+      );
+    });
+
+    // Get user with timeout protection
+    const userPromise = getUserById(user_id);
+    const user = await Promise.race([userPromise, userTimeoutPromise]);
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const book = await getBookById(book_id);
+    // Set timeout for book service call
+    const bookTimeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Book service call timed out")),
+        process.env.BOOK_SERVICE_TIMEOUT || 3000
+      );
+    });
+
+    // Get book with timeout protection
+    const bookPromise = getBookById(book_id);
+    const book = await Promise.race([bookPromise, bookTimeoutPromise]);
+
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
@@ -34,12 +56,29 @@ export const createLoan = async (req, res) => {
       dueDate: due_date,
     });
 
-    // Use the new updateBookAvailability method with 'decrement' operation
-    await updateBookAvailability(book_id, null, "decrement");
+    // Set timeout for book availability update
+    const updateTimeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Book availability update timed out")),
+        process.env.BOOK_AVAILABILITY_TIMEOUT || 5000
+      );
+    });
+
+    // Update book availability with timeout protection
+    const updatePromise = updateBookAvailability(book_id, null, "decrement");
+    await Promise.race([updatePromise, updateTimeoutPromise]);
+
     await loan.save();
 
     res.status(201).json(loan);
   } catch (error) {
+    console.error(`Error in createLoan: ${error.message}`);
+    // Handle specific timeout errors
+    if (error.message.includes("timed out")) {
+      return res.status(503).json({
+        message: "Service temporarily unavailable, please try again later",
+      });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -133,13 +172,40 @@ export const returnBook = async (req, res) => {
     loan.returnDate = new Date();
     await loan.save({ session });
 
-    // Use the new updateBookAvailability method with 'increment' operation
-    await updateBookAvailability(loan.book, null, "increment");
+    // Set timeout for book availability update
+    const updateTimeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Book availability update timed out")),
+        process.env.BOOK_AVAILABILITY_TIMEOUT || 5000
+      );
+    });
 
-    await session.commitTransaction();
-    res.json(loan);
+    // Update book availability with timeout protection
+    const updatePromise = updateBookAvailability(loan.book, null, "increment");
+
+    try {
+      await Promise.race([updatePromise, updateTimeoutPromise]);
+      await session.commitTransaction();
+      res.json(loan);
+    } catch (updateError) {
+      // If the update to book service fails, we need to rollback the transaction
+      await session.abortTransaction();
+
+      console.error(`Error updating book availability: ${updateError.message}`);
+      if (updateError.message.includes("timed out")) {
+        return res.status(503).json({
+          message:
+            "Book service temporarily unavailable, please try again later",
+        });
+      }
+      throw updateError; // Rethrow to be caught by outer catch block
+    }
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+
+    console.error(`Error in returnBook: ${error.message}`);
     res.status(500).json({ message: error.message });
   } finally {
     session.endSession();
@@ -156,14 +222,26 @@ export const getUserLoans = async (req, res) => {
     // Format loans to match the required response structure
     const formattedLoans = await Promise.all(
       loans.map(async (loan) => {
-        // Fetch book details from book service
+        // Default book details if service is unavailable
         let bookDetails = {
           id: loan.book,
-          title: "Unknown",
-          author: "Unknown",
+          title: "Unknown (Service Unavailable)",
+          author: "Unknown (Service Unavailable)",
         };
+
         try {
-          const book = await getBookById(loan.book);
+          // Set timeout for book service call
+          const bookTimeoutPromise = new Promise((_, reject) => {
+            setTimeout(
+              () => reject(new Error("Book service call timed out")),
+              process.env.BOOK_SERVICE_TIMEOUT || 3000
+            );
+          });
+
+          // Get book with timeout protection
+          const bookPromise = getBookById(loan.book);
+          const book = await Promise.race([bookPromise, bookTimeoutPromise]);
+
           if (book) {
             bookDetails = {
               id: book._id,
@@ -173,6 +251,7 @@ export const getUserLoans = async (req, res) => {
           }
         } catch (error) {
           console.error(`Error fetching book details: ${error.message}`);
+          // Continue with default book details on error
         }
 
         // Format the loan object to match the required structure
@@ -193,6 +272,7 @@ export const getUserLoans = async (req, res) => {
       total: formattedLoans.length,
     });
   } catch (error) {
+    console.error(`Error in getUserLoans: ${error.message}`);
     res.status(500).json({ message: error.message });
   }
 };
@@ -206,20 +286,31 @@ export const getOverdueLoans = async (req, res) => {
       status: { $in: ["ACTIVE", "OVERDUE"] },
     }).sort({ dueDate: 1 });
 
-    // Manually fetch user and book details
+    // Manually fetch user and book details with circuit breaker protection
     const formattedLoans = await Promise.all(
       overdueLoans.map(async (loan) => {
         const dueDate = new Date(loan.dueDate);
         const diffTime = Math.abs(now - dueDate);
         const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        // Fetch user details
-        let userName = "Unknown";
+        // Fetch user details with timeout protection
+        let userName = "Unknown (Service Unavailable)";
         let userEmail = "unknown@example.com";
         let userId = loan.user;
 
         try {
-          const user = await getUserById(loan.user);
+          // Set timeout for user service call
+          const userTimeoutPromise = new Promise((_, reject) => {
+            setTimeout(
+              () => reject(new Error("User service call timed out")),
+              process.env.USER_SERVICE_TIMEOUT || 3000
+            );
+          });
+
+          // Get user with timeout protection
+          const userPromise = getUserById(loan.user);
+          const user = await Promise.race([userPromise, userTimeoutPromise]);
+
           if (user) {
             userName = user.name;
             userEmail = user.email;
@@ -227,15 +318,27 @@ export const getOverdueLoans = async (req, res) => {
           }
         } catch (error) {
           console.error(`Error fetching user details: ${error.message}`);
+          // Continue with default values on error
         }
 
-        // Fetch book details
-        let bookTitle = "Unknown";
-        let bookAuthor = "Unknown";
+        // Fetch book details with timeout protection
+        let bookTitle = "Unknown (Service Unavailable)";
+        let bookAuthor = "Unknown (Service Unavailable)";
         let bookId = loan.book;
 
         try {
-          const book = await getBookById(loan.book);
+          // Set timeout for book service call
+          const bookTimeoutPromise = new Promise((_, reject) => {
+            setTimeout(
+              () => reject(new Error("Book service call timed out")),
+              process.env.BOOK_SERVICE_TIMEOUT || 3000
+            );
+          });
+
+          // Get book with timeout protection
+          const bookPromise = getBookById(loan.book);
+          const book = await Promise.race([bookPromise, bookTimeoutPromise]);
+
           if (book) {
             bookTitle = book.title;
             bookAuthor = book.author;
@@ -243,6 +346,7 @@ export const getOverdueLoans = async (req, res) => {
           }
         } catch (error) {
           console.error(`Error fetching book details: ${error.message}`);
+          // Continue with default values on error
         }
 
         return {
@@ -266,6 +370,7 @@ export const getOverdueLoans = async (req, res) => {
 
     res.json(formattedLoans);
   } catch (error) {
+    console.error(`Error in getOverdueLoans: ${error.message}`);
     res.status(500).json({ message: error.message });
   }
 };

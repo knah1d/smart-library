@@ -230,7 +230,20 @@ export const increaseBookAvailability = async (bookId, session = null) => {
 export const decreaseAvailabilityEndpoint = async (req, res) => {
   try {
     const bookId = req.params.id;
-    const book = await decreaseBookAvailability(bookId);
+
+    // Add a timeout to this critical operation
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Operation timed out")),
+        process.env.AVAILABILITY_OPERATION_TIMEOUT || 3000
+      );
+    });
+
+    // Create the actual operation
+    const decreasePromise = decreaseBookAvailability(bookId);
+
+    // Race the operation against the timeout
+    const book = await Promise.race([decreasePromise, timeoutPromise]);
 
     // Format response to be consistent with other endpoints
     const formattedBook = {
@@ -246,6 +259,12 @@ export const decreaseAvailabilityEndpoint = async (req, res) => {
 
     res.json(formattedBook);
   } catch (error) {
+    console.error(`Error in decreaseAvailabilityEndpoint: ${error.message}`);
+    if (error.message === "Operation timed out") {
+      return res.status(503).json({
+        message: "Service temporarily unavailable, please try again later",
+      });
+    }
     res.status(400).json({ message: error.message });
   }
 };
@@ -253,7 +272,20 @@ export const decreaseAvailabilityEndpoint = async (req, res) => {
 export const increaseAvailabilityEndpoint = async (req, res) => {
   try {
     const bookId = req.params.id;
-    const book = await increaseBookAvailability(bookId);
+
+    // Add a timeout to this critical operation
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Operation timed out")),
+        process.env.AVAILABILITY_OPERATION_TIMEOUT || 3000
+      );
+    });
+
+    // Create the actual operation
+    const increasePromise = increaseBookAvailability(bookId);
+
+    // Race the operation against the timeout
+    const book = await Promise.race([increasePromise, timeoutPromise]);
 
     // Format response to be consistent with other endpoints
     const formattedBook = {
@@ -269,6 +301,12 @@ export const increaseAvailabilityEndpoint = async (req, res) => {
 
     res.json(formattedBook);
   } catch (error) {
+    console.error(`Error in increaseAvailabilityEndpoint: ${error.message}`);
+    if (error.message === "Operation timed out") {
+      return res.status(503).json({
+        message: "Service temporarily unavailable, please try again later",
+      });
+    }
     res.status(400).json({ message: error.message });
   }
 };
@@ -276,9 +314,31 @@ export const increaseAvailabilityEndpoint = async (req, res) => {
 // Get popular books
 export const getPopularBooks = async (req, res) => {
   try {
-    const popularBooks = await getPopularBooksData();
+    // Set a timeout for this operation to prevent long-running requests
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Operation timed out")),
+        process.env.POPULAR_BOOKS_TIMEOUT || 5000
+      );
+    });
+
+    // Create the actual operation
+    const popularBooksPromise = getPopularBooksData();
+
+    // Race the operation against the timeout
+    const popularBooks = await Promise.race([
+      popularBooksPromise,
+      timeoutPromise,
+    ]);
+
     res.json(popularBooks);
   } catch (error) {
+    console.error(`Error in getPopularBooks: ${error.message}`);
+    if (error.message === "Operation timed out") {
+      return res.status(503).json({
+        message: "Service temporarily unavailable, please try again later",
+      });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -307,20 +367,31 @@ export const updateBookAvailability = async (req, res) => {
     const { id } = req.params;
     const { operation } = req.body;
 
-    const book = await Book.findById(id);
+    // Add a timeout to this critical operation
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Operation timed out")),
+        process.env.AVAILABILITY_OPERATION_TIMEOUT || 3000
+      );
+    });
+
+    // Create the actual database lookup operation
+    const findBookPromise = Book.findById(id);
+
+    // Race the operation against the timeout
+    const book = await Promise.race([findBookPromise, timeoutPromise]);
+
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
-    // Direct update to specific value
-   
-    
+
     // Update availability based on operation
     if (operation === "increment") {
-       if (book.availableCopies >= book.copies) {
-      return res.status(400).json({
-        message: "Available copies cannot exceed total copies",
-      });
-    }
+      if (book.availableCopies >= book.copies) {
+        return res.status(400).json({
+          message: "Available copies cannot exceed total copies",
+        });
+      }
       book.availableCopies += 1;
     } else if (operation === "decrement") {
       if (book.availableCopies <= 0) {
@@ -335,7 +406,17 @@ export const updateBookAvailability = async (req, res) => {
       });
     }
 
-    await book.save();
+    // Save with timeout protection
+    const savePromise = book.save();
+    await Promise.race([
+      savePromise,
+      new Promise((_, reject) => {
+        setTimeout(
+          () => reject(new Error("Save operation timed out")),
+          process.env.DB_SAVE_TIMEOUT || 3000
+        );
+      }),
+    ]);
 
     // Return simplified response as specified
     res.json({
@@ -344,6 +425,12 @@ export const updateBookAvailability = async (req, res) => {
       updated_at: book.updatedAt.toISOString(),
     });
   } catch (error) {
+    console.error(`Error in updateBookAvailability: ${error.message}`);
+    if (error.message.includes("timed out")) {
+      return res.status(503).json({
+        message: "Service temporarily unavailable, please try again later",
+      });
+    }
     res.status(500).json({ message: error.message });
   }
 };
