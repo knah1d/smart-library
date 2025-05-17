@@ -1,10 +1,7 @@
 import Loan from "../models/Loan.js";
 import mongoose from "mongoose";
 import { getUserById } from "../services/UserApi.js";
-import {
-  getBookById,
-  updateBookAvailability,
-} from "../services/BookApi.js";
+import { getBookById, updateBookAvailability } from "../services/BookApi.js";
 
 // Create a new loan
 export const createLoan = async (req, res) => {
