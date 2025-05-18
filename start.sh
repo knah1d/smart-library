@@ -5,6 +5,7 @@ sudo kill -9 $(sudo lsof -t -i :8083)
 
 
 # Start User Service
+echo "Starting User Service..."
 cd /home/nahid/Desktop/6th_SEM/DistSys/smart-library/user-service
 PORT=8081 npm run dev &
 
