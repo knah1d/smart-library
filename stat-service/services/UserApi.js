@@ -45,35 +45,6 @@ export const countUsers = async () => {
 };
 
 
-// Base function for getting a user by ID
-const getUserByIdFn = async (userId) => {
-  try {
-    const response = await userApiClient.get(`/users/${userId}`);
-    return response.data;
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      return null;
-    }
-    throw new Error(`Error fetching user: ${error.message}`);
-  }
-};
-
-// Create circuit breaker for getUserById
-const getUserByIdBreaker = createCircuitBreaker(
-  getUserByIdFn,
-  "getUserById",
-  { timeout: 3000 } // Lower timeout for read operations
-);
-
-// Define fallback function
-getUserByIdBreaker.fallback(
-  createDefaultFallback("User service - getUserById", null)
-);
-
-// Circuit-breaker wrapped function
-export const getUserById = async (userId) => {
-  return getUserByIdBreaker.fire(userId);
-};
 
 // Health check function to verify user service is online
 export const checkUserServiceHealth = async () => {
@@ -93,6 +64,6 @@ export const checkUserServiceHealth = async () => {
 
 
 export default {
-  getUserById,
+  countUsers,
   checkUserServiceHealth,
 };
