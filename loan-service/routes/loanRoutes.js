@@ -30,6 +30,6 @@ router.get("/overdue", getOverdueLoans);
 router.get("/user/:userId", getUserLoans); // Get loans for a specific user by their ID
 router.get("/:id", getLoanById);
 router.patch("/:id/update", updateLoan);
-router.put("/:id/extend", extendLoan);
+router.patch("/:id/extend", extendLoan);
 
 export default router;
