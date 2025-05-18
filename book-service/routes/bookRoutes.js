@@ -22,13 +22,11 @@ const router = express.Router();
 // Routes
 router.post("/", validateNewBook, createBook);
 router.get("/", getBooks);
+router.get("/stats/popular", getPopularBooks);
+router.get("/stats", getBookStats);
 router.get("/:id", getBookById);
 router.put("/:id", validateBookUpdate, updateBook);
 router.delete("/:id", deleteBook);
-
-//stats routes
-router.get("/stats/popular", getPopularBooks);
-router.get("/stats", getBookStats);
 
 // Book availability endpoints for loan service
 router.patch("/:id/decrease-availability", decreaseAvailabilityEndpoint);

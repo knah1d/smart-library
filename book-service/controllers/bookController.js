@@ -421,7 +421,7 @@ export const updateBookAvailability = async (req, res) => {
 
 
 // Get book stats - for stats controller
-export const getBookStats = async () => {
+export const getBookStats = async (req, res) => {
   try {
     const stats = await Book.aggregate([
       {
@@ -432,8 +432,8 @@ export const getBookStats = async () => {
         },
       },
     ]);
-    return stats[0] || { total: 0, available: 0 };
+    res.json(stats[0] || { total: 0, available: 0 });
   } catch (error) {
-    throw new Error(`Error getting book stats: ${error.message}`);
+    res.status(500).json({ message: `Error getting book stats: ${error.message}` });
   }
 };
