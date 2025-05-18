@@ -162,6 +162,12 @@ export const returnBook = async (req, res) => {
       return res.status(404).json({ message: "Loan not found" });
     }
 
+    if(!["ACTIVE", "OVERDUE"].includes(loan.status)) {
+      await session.abortTransaction();
+      return res
+        .status(400)
+        .json({ message: "Can only return active or overdue loans" });
+    }
     loan.status = "RETURNED";
     loan.returnDate = new Date();
     await loan.save({ session });
