@@ -162,7 +162,7 @@ export const returnBook = async (req, res) => {
       return res.status(404).json({ message: "Loan not found" });
     }
 
-    if(!["ACTIVE", "OVERDUE"].includes(loan.status)) {
+    if (!["ACTIVE", "OVERDUE"].includes(loan.status)) {
       await session.abortTransaction();
       return res
         .status(400)
@@ -428,7 +428,7 @@ export const extendLoan = async (req, res) => {
 };
 
 // For stats controller
-export const getPopularBooksData = async () => {
+export const getPopularBooksData = async (req, res) => {
   try {
     // Get the most borrowed books
     const popularBookIds = await Loan.aggregate([
@@ -469,14 +469,16 @@ export const getPopularBooksData = async () => {
       })
     );
 
-    return popularBooks;
+    res.json(popularBooks);
   } catch (error) {
-    throw new Error(`Error getting popular books: ${error.message}`);
+    res
+      .status(500)
+      .json({ message: `Error getting popular books: ${error.message}` });
   }
 };
 
 // For stats controller
-export const getActiveUsersData = async () => {
+export const getActiveUsersData = async (req, res) => {
   try {
     // Get the most active users
     const activeUserIds = await Loan.aggregate([
@@ -522,43 +524,49 @@ export const getActiveUsersData = async () => {
       })
     );
 
-    return activeUsers;
+    res.json(activeUsers);
   } catch (error) {
-    throw new Error(`Error getting active users: ${error.message}`);
+    res
+      .status(500)
+      .json({ message: `Error getting active users: ${error.message}` });
   }
 };
 
 // For stats controller
-export const getLoanCountByStatus = async (status) => {
+export const getLoanCountByStatus = async (req, res) => {
   try {
-    return await Loan.countDocuments({ status });
+    const { status } = req.params;
+    const count = await Loan.countDocuments({ status });
+    res.json({ count });
   } catch (error) {
-    throw new Error(`Error counting loans by status: ${error.message}`);
+    res.status(500).json({ message: `Error counting loans by status: ${error.message}` });
   }
 };
 
 // For stats controller
-export const getLoansToday = async () => {
+export const getLoansToday = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return await Loan.countDocuments({
+    const count = await Loan.countDocuments({
       issueDate: { $gte: today },
     });
+    res.json({ count });
   } catch (error) {
-    throw new Error(`Error counting loans today: ${error.message}`);
+    res.status(500).json({ message: `Error counting loans today: ${error.message}` });
   }
 };
 
 // For stats controller
-export const getReturnsToday = async () => {
+export const getReturnsToday = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return await Loan.countDocuments({
+    const count = await Loan.countDocuments({
       returnDate: { $gte: today },
     });
+    res.json({ count });
   } catch (error) {
-    throw new Error(`Error counting returns today: ${error.message}`);
+    res.status(500).json({ message: error.message });
   }
 };

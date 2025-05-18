@@ -21,7 +21,7 @@ const loanApiClient = axios.create({
 
 const getPopularBooksDataFn = async () => {
   try {
-    const response = await loanApiClient.get("/api/loans/books/popular");
+    const response = await loanApiClient.get("/loans/books/popular");
     return response.data;
   } catch (error) {
     throw new Error(`Error fetching popular books data: ${error.message}`);
@@ -44,7 +44,7 @@ export const getPopularBooksData = async () => {
 
 const getActiveUsersDataFn = async () => {
   try {
-    const response = await loanApiClient.get("/api/loans/active-users");
+    const response = await loanApiClient.get("/loans/active-users");
     return response.data;
   } catch (error) {
     throw new Error(`Error fetching active loans data: ${error.message}`);
@@ -67,7 +67,7 @@ export const getActiveUsersData = async () => {
 
 const getLoanCountByStatusFn = async (status) => {
   try {
-    const response = await loanApiClient.get(`/api/loans/count`, {
+    const response = await loanApiClient.get(`/loans/count`, {
       params: { status },
     });
     return response.data;
@@ -92,7 +92,7 @@ export const getLoanCountByStatus = async (status) => {
 
 const getLoansTodayFn = async () => {
   try {
-    const response = await loanApiClient.get("/api/loans/today");
+    const response = await loanApiClient.get("/loans/today");
     return response.data;
   } catch (error) {
     throw new Error(`Error fetching loans today: ${error.message}`);
@@ -115,7 +115,7 @@ export const getLoansToday = async () => {
 
 const getReturnsTodayFn = async () => {
   try {
-    const response = await loanApiClient.get("/api/loans/returns/today");
+    const response = await loanApiClient.get("/loans/returns/today");
     return response.data;
   } catch (error) {
     throw new Error(`Error fetching returns today: ${error.message}`);
@@ -134,4 +134,23 @@ getReturnsTodayBreaker.fallback(
 // Circuit-breaker wrapped function
 export const getReturnsToday = async () => {
   return getReturnsTodayBreaker.fire();
+};
+
+
+export const checkLoanServiceHealth = async () => {
+  try {
+    const response = await loanApiClient.get("/health");
+    return response.data;
+  } catch (error) {
+    throw new Error(`Error checking loan service health: ${error.message}`);
+  }
+};
+
+export default {
+  getPopularBooksData,
+  getActiveUsersData,
+  getLoanCountByStatus,
+  getLoansToday,
+  getReturnsToday,
+  checkLoanServiceHealth,
 };
