@@ -21,7 +21,7 @@ const loanApiClient = axios.create({
 
 const getPopularBooksDataFn = async () => {
   try {
-    const response = await loanApiClient.get("/loans/books/popular");
+    const response = await loanApiClient.get("/api/loans/books/popular");
     return response.data;
   } catch (error) {
     throw new Error(`Error fetching popular books data: ${error.message}`);
@@ -35,7 +35,7 @@ const getPopularBooksDataBreaker = createCircuitBreaker(
 );
 // Define fallback function
 getPopularBooksDataBreaker.fallback(
-  createDefaultFallback("User service - getPopularBooksData", null)
+  createDefaultFallback("Loan service - getPopularBooksData", null)
 );
 // Circuit-breaker wrapped function
 export const getPopularBooksData = async () => {
@@ -44,10 +44,10 @@ export const getPopularBooksData = async () => {
 
 const getActiveUsersDataFn = async () => {
   try {
-    const response = await loanApiClient.get("/loans/active-users");
+    const response = await loanApiClient.get("/api/loans/active-users");
     return response.data;
   } catch (error) {
-    throw new Error(`Error fetching active users data: ${error.message}`);
+    throw new Error(`Error fetching active loans data: ${error.message}`);
   }
 };
 // Create circuit breaker for getActiveUsersData
@@ -58,16 +58,18 @@ const getActiveUsersDataBreaker = createCircuitBreaker(
 );
 // Define fallback function
 getActiveUsersDataBreaker.fallback(
-  createDefaultFallback("User service - getActiveUsersData", null)
+  createDefaultFallback("Loan service - getActiveUsersData", null)
 );
 // Circuit-breaker wrapped function
 export const getActiveUsersData = async () => {
   return getActiveUsersDataBreaker.fire();
 };
 
-const getLoanCountByStatusFn = async () => {
+const getLoanCountByStatusFn = async (status) => {
   try {
-    const response = await loanApiClient.get("/loans/count");
+    const response = await loanApiClient.get(`/api/loans/count`, {
+      params: { status },
+    });
     return response.data;
   } catch (error) {
     throw new Error(`Error fetching loan count by status: ${error.message}`);
@@ -81,16 +83,16 @@ const getLoanCountByStatusBreaker = createCircuitBreaker(
 );
 // Define fallback function
 getLoanCountByStatusBreaker.fallback(
-  createDefaultFallback("User service - getLoanCountByStatus", null)
+  createDefaultFallback("Loan service - getLoanCountByStatus", null)
 );
 // Circuit-breaker wrapped function
-export const getLoanCountByStatus = async () => {
-  return getLoanCountByStatusBreaker.fire();
+export const getLoanCountByStatus = async (status) => {
+  return getLoanCountByStatusBreaker.fire(status);
 };
 
 const getLoansTodayFn = async () => {
   try {
-    const response = await loanApiClient.get("/loans/today");
+    const response = await loanApiClient.get("/api/loans/today");
     return response.data;
   } catch (error) {
     throw new Error(`Error fetching loans today: ${error.message}`);
@@ -113,7 +115,7 @@ export const getLoansToday = async () => {
 
 const getReturnsTodayFn = async () => {
   try {
-    const response = await loanApiClient.get("/loans/returns/today");
+    const response = await loanApiClient.get("/api/loans/returns/today");
     return response.data;
   } catch (error) {
     throw new Error(`Error fetching returns today: ${error.message}`);
