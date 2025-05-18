@@ -5,7 +5,7 @@ import {
   updateUser,
   getUserByEmail,
   getActiveUsers,
-  countUsers
+  countUsers,
 } from "../controllers/userController.js";
 import { validateUser } from "../middlewares/validation.js";
 
@@ -13,10 +13,11 @@ const router = express.Router();
 
 // Routes
 router.post("/", validateUser, createUser);
-router.get("/:id", getUserById);
 router.get("/", getUserByEmail);
+
 router.get("/count", countUsers);
-router.patch("/:id", validateUser, updateUser);
 router.get("/active", getActiveUsers);
+router.get("/:id", getUserById);
+router.patch("/:id", validateUser, updateUser);
 
 export default router;
