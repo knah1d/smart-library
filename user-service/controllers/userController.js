@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import { getActiveUsersData } from "../services/LoanApi.js";
 
 // Create a new user
 export const createUser = async (req, res) => {
@@ -83,14 +84,12 @@ export const updateUser = async (req, res) => {
       }
     }
 
-    // Build update object only with fields that are explicitly provided in the request
-    // Don't include undefined values or empty strings that would overwrite existing data
     const updates = {};
     if (name !== undefined && name !== "") updates.name = name;
     if (email !== undefined && email !== "") updates.email = email;
     if (role !== undefined && role !== "") updates.role = role;
 
-    // Only update if we have something to update
+    
     if (Object.keys(updates).length > 0) {
       const updatedUser = await User.findByIdAndUpdate(req.params.id, updates, {
         new: true,
@@ -98,7 +97,6 @@ export const updateUser = async (req, res) => {
       });
       res.json(updatedUser);
     } else {
-      // If no updates were provided, just return the current user
       res.json(user);
     }
   } catch (error) {
@@ -109,9 +107,10 @@ export const updateUser = async (req, res) => {
 // Count total users - for stats controller
 export const countUsers = async (req, res) => {
   try {
-    return await User.countDocuments();
+    const count = await User.countDocuments();
+    res.json({ count });
   } catch (error) {
-    throw new Error(`Error counting users: ${error.message}`);
+    res.status(500).json({ message: `Error counting users: ${error.message}` });
   }
 };
 

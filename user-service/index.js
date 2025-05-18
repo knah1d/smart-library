@@ -11,12 +11,10 @@ connectDB();
 
 // Middleware
 app.use(cors());
+
+// Middleware to parse JSON requests
 app.use(express.json());
 
-// Routes
-// app.get('/', (req, res) => {
-//   res.json({ message: 'Welcome to Smart Library System API' });
-// });
 
 // Import routes
 import userRoutes from "./routes/userRoutes.js";
