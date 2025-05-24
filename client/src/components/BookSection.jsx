@@ -4,6 +4,7 @@ import { bookAPI } from "../services/book-api.js";
 const BookSection = () => {
   const [books, setBooks] = useState([]);
   const [loadingFetch, setLoadingFetch] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingAdd, setLoadingAdd] = useState(false);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,6 +51,33 @@ const BookSection = () => {
     }
   };
 
+  const searchBooks = async (search) => {
+    setLoadingSearch(true);
+    setError("");
+    try {
+      const data = await bookAPI.getBooks(
+        search,
+        pagination.page,
+        pagination.perPage
+      );
+      // Check if the response is in the new format or old format
+      if (data.books) {
+        setBooks(data.books);
+        setPagination({
+          ...pagination,
+          total: data.total || 0,
+        });
+      } else {
+        setBooks(data);
+      }
+    } catch (err) {
+      setError("Failed to search books");
+      console.error(err);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewBook((prev) => ({
@@ -91,20 +119,20 @@ const BookSection = () => {
             className="flex-grow px-4 py-2 border rounded-md"
           />
           <button
-            onClick={() => fetchBooks(searchTerm)}
+            onClick={() => searchBooks(searchTerm)}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            disabled={loadingFetch}
+            disabled={loadingSearch}
           >
-            {loadingFetch ? "Searching..." : "Search"}
+            {loadingSearch ? "Searching..." : "Search"}
           </button>
           {searchTerm && (
             <button
               onClick={() => {
                 setSearchTerm("");
-                fetchBooks("");
+                searchBooks("");
               }}
               className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-              disabled={loadingFetch}
+              disabled={loadingSearch}
             >
               Clear
             </button>
