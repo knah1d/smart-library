@@ -5,7 +5,8 @@ const UserSection = () => {
   const [userId, setUserId] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingFetch, setLoadingFetch] = useState(false);
+  const [loadingCreate, setLoadingCreate] = useState(false);
   const [error, setError] = useState("");
   const [searchType, setSearchType] = useState("id"); // "id" or "email"
   const [newUser, setNewUser] = useState({
@@ -21,7 +22,7 @@ const UserSection = () => {
         return;
       }
 
-      setLoading(true);
+      setLoadingFetch(true);
       setError("");
       try {
         const data = await userAPI.getUser(userId);
@@ -30,7 +31,7 @@ const UserSection = () => {
         setError("Failed to fetch user");
         console.error(err);
       } finally {
-        setLoading(false);
+        setLoadingFetch(false);
       }
     } else {
       // search by email
@@ -39,7 +40,7 @@ const UserSection = () => {
         return;
       }
 
-      setLoading(true);
+      setLoadingFetch(true);
       setError("");
       try {
         const data = await userAPI.getUserByEmail(userEmail);
@@ -48,7 +49,7 @@ const UserSection = () => {
         setError("Failed to fetch user by email");
         console.error(err);
       } finally {
-        setLoading(false);
+        setLoadingFetch(false);
       }
     }
   };
@@ -63,7 +64,7 @@ const UserSection = () => {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setLoadingCreate(true);
     setError("");
     try {
       const result = await userAPI.createUser(newUser);
@@ -74,7 +75,7 @@ const UserSection = () => {
       setError("Failed to create user");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingCreate(false);
     }
   };
 
@@ -133,9 +134,9 @@ const UserSection = () => {
             <button
               type="submit"
               className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              disabled={loading}
+              disabled={loadingCreate}
             >
-              {loading ? "Creating..." : "Create User"}
+              {loadingCreate ? "Creating..." : "Create User"}
             </button>
           </div>
         </form>
@@ -182,9 +183,9 @@ const UserSection = () => {
             <button
               onClick={fetchUser}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded"
-              disabled={loading}
+              disabled={loadingFetch}
             >
-              {loading ? "Loading..." : "Fetch User"}
+              {loadingFetch ? "Loading..." : "Fetch User"}
             </button>
           </div>
         ) : (
@@ -199,9 +200,9 @@ const UserSection = () => {
             <button
               onClick={fetchUser}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded"
-              disabled={loading}
+              disabled={loadingFetch}
             >
-              {loading ? "Loading..." : "Fetch User"}
+              {loadingFetch ? "Loading..." : "Fetch User"}
             </button>
           </div>
         )}
@@ -223,12 +224,6 @@ const UserSection = () => {
             <p>
               <strong>Role:</strong> {userData.role}
             </p>
-            {userData.created_at && (
-              <p>
-                <strong>Created:</strong>{" "}
-                {new Date(userData.created_at).toLocaleString()}
-              </p>
-            )}
           </div>
         )}
       </div>

@@ -3,7 +3,8 @@ import { bookAPI } from "../services/book-api.js";
 
 const BookSection = () => {
   const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingFetch, setLoadingFetch] = useState(false);
+  const [loadingAdd, setLoadingAdd] = useState(false);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({
@@ -23,7 +24,7 @@ const BookSection = () => {
   }, [pagination.page, pagination.perPage]);
 
   const fetchBooks = async (search = searchTerm) => {
-    setLoading(true);
+    setLoadingFetch(true);
     setError("");
     try {
       const data = await bookAPI.getBooks(
@@ -45,7 +46,7 @@ const BookSection = () => {
       setError("Failed to fetch books");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingFetch(false);
     }
   };
 
@@ -59,7 +60,7 @@ const BookSection = () => {
 
   const handleAddBook = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setLoadingAdd(true);
     setError("");
     try {
       await bookAPI.createBook(newBook);
@@ -71,7 +72,7 @@ const BookSection = () => {
       setError("Failed to add book");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingAdd(false);
     }
   };
 
@@ -92,8 +93,9 @@ const BookSection = () => {
           <button
             onClick={() => fetchBooks(searchTerm)}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            disabled={loadingFetch}
           >
-            Search
+            {loadingFetch ? "Searching..." : "Search"}
           </button>
           {searchTerm && (
             <button
@@ -102,6 +104,7 @@ const BookSection = () => {
                 fetchBooks("");
               }}
               className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+              disabled={loadingFetch}
             >
               Clear
             </button>
@@ -172,9 +175,9 @@ const BookSection = () => {
           <button
             type="submit"
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            disabled={loading}
+            disabled={loadingAdd}
           >
-            {loading ? "Adding..." : "Add Book"}
+            {loadingAdd ? "Adding..." : "Add Book"}
           </button>
         </form>
       </div>
@@ -185,9 +188,9 @@ const BookSection = () => {
           <button
             onClick={fetchBooks}
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm"
-            disabled={loading}
+            disabled={loadingFetch}
           >
-            {loading ? "Loading..." : "Refresh Books"}
+            {loadingFetch ? "Loading..." : "Refresh Books"}
           </button>
         </div>
 
@@ -256,7 +259,7 @@ const BookSection = () => {
               ) : (
                 <tr>
                   <td colSpan="7" className="px-3 py-2 text-center text-sm">
-                    {loading
+                    {loadingFetch
                       ? "Loading books..."
                       : "No books found. Click Refresh to load books."}
                   </td>
@@ -284,7 +287,7 @@ const BookSection = () => {
                     page: Math.max(1, pagination.page - 1),
                   })
                 }
-                disabled={pagination.page <= 1}
+                disabled={pagination.page <= 1 || loadingFetch}
                 className="px-3 py-1 border rounded disabled:opacity-50"
               >
                 Previous
@@ -295,7 +298,8 @@ const BookSection = () => {
                 }
                 disabled={
                   pagination.page >=
-                  Math.ceil(pagination.total / pagination.perPage)
+                    Math.ceil(pagination.total / pagination.perPage) ||
+                  loadingFetch
                 }
                 className="px-3 py-1 border rounded disabled:opacity-50"
               >

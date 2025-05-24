@@ -4,11 +4,14 @@ import { statsAPI } from "../services/stat-api.js";
 const StatsSection = () => {
   const [systemOverview, setSystemOverview] = useState(null);
   const [popularBooks, setPopularBooks] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [activeUsers, setActiveUsers] = useState([]);
+  const [loadingOverview, setLoadingOverview] = useState(false);
+  const [loadingPopularBooks, setLoadingPopularBooks] = useState(false);
+  const [loadingActiveUsers, setLoadingActiveUsers] = useState(false);
   const [error, setError] = useState("");
 
   const fetchSystemOverview = async () => {
-    setLoading(true);
+    setLoadingOverview(true);
     setError("");
     try {
       const data = await statsAPI.getSystemOverview();
@@ -17,12 +20,12 @@ const StatsSection = () => {
       setError("Failed to fetch system overview");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingOverview(false);
     }
   };
 
   const fetchPopularBooks = async () => {
-    setLoading(true);
+    setLoadingPopularBooks(true);
     setError("");
     try {
       const data = await statsAPI.getPopularBooks();
@@ -31,7 +34,21 @@ const StatsSection = () => {
       setError("Failed to fetch popular books");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingPopularBooks(false);
+    }
+  };
+  
+  const fetchActiveUsers = async () => {
+    setLoadingActiveUsers(true);
+    setError("");
+    try {
+      const data = await statsAPI.getActiveUsers();
+      setActiveUsers(data);
+    } catch (err) {
+      setError("Failed to fetch active users");
+      console.error(err);
+    } finally {
+      setLoadingActiveUsers(false);
     }
   };
 
@@ -44,9 +61,9 @@ const StatsSection = () => {
         <button
           onClick={fetchSystemOverview}
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded"
-          disabled={loading}
+          disabled={loadingOverview}
         >
-          {loading ? "Loading..." : "Fetch Overview"}
+          {loadingOverview ? "Loading..." : "Fetch Overview"}
         </button>
 
         {error && <p className="text-red-500 mt-2">{error}</p>}
@@ -116,9 +133,9 @@ const StatsSection = () => {
         <button
           onClick={fetchPopularBooks}
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded"
-          disabled={loading}
+          disabled={loadingPopularBooks}
         >
-          {loading ? "Loading..." : "Fetch Popular Books"}
+          {loadingPopularBooks ? "Loading..." : "Fetch Popular Books"}
         </button>
 
         {popularBooks.length > 0 && (
@@ -154,6 +171,52 @@ const StatsSection = () => {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
                       {book.borrow_count || book.loanCount || 0}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold mb-2">Active Users</h3>
+        <button
+          onClick={fetchActiveUsers}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded"
+          disabled={loadingActiveUsers}
+        >
+          {loadingActiveUsers ? "Loading..." : "Fetch Active Users"}
+        </button>
+
+        {activeUsers.length > 0 && (
+          <div className="mt-4">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User ID
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Books Borrowed
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {activeUsers.map((user) => (
+                  <tr key={user.user_id || user._id || user.id}>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      {user.user_id || user._id || user.id}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      {user.name}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      {user.books_borrowed || user.booksBorrowed || 0}
                     </td>
                   </tr>
                 ))}

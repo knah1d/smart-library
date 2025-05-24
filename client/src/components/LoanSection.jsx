@@ -4,7 +4,9 @@ import { loanAPI } from "../services/loan-api.js";
 const LoanSection = () => {
   const [userId, setUserId] = useState("");
   const [loans, setLoans] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingFetch, setLoadingFetch] = useState(false);
+  const [loadingCreate, setLoadingCreate] = useState(false);
+  const [loadingReturn, setLoadingReturn] = useState(false);
   const [error, setError] = useState("");
   const [newLoan, setNewLoan] = useState({
     user_id: "",
@@ -18,7 +20,7 @@ const LoanSection = () => {
       return;
     }
 
-    setLoading(true);
+    setLoadingFetch(true);
     setError("");
     try {
       const data = await loanAPI.getUserLoans(userId);
@@ -27,7 +29,7 @@ const LoanSection = () => {
       setError("Failed to fetch loans");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingFetch(false);
     }
   };
 
@@ -41,7 +43,7 @@ const LoanSection = () => {
 
   const handleCreateLoan = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setLoadingCreate(true);
     setError("");
     try {
       await loanAPI.createLoan(newLoan);
@@ -53,12 +55,12 @@ const LoanSection = () => {
       setError("Failed to create loan");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingCreate(false);
     }
   };
 
   const handleReturnBook = async (loanId) => {
-    setLoading(true);
+    setLoadingReturn(true);
     setError("");
     try {
       await loanAPI.returnBook(loanId);
@@ -67,7 +69,7 @@ const LoanSection = () => {
       setError("Failed to return book");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingReturn(false);
     }
   };
 
@@ -130,9 +132,9 @@ const LoanSection = () => {
           <button
             type="submit"
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            disabled={loading}
+            disabled={loadingCreate}
           >
-            {loading ? "Creating..." : "Create Loan"}
+            {loadingCreate ? "Creating..." : "Create Loan"}
           </button>
         </form>
       </div>
@@ -150,9 +152,9 @@ const LoanSection = () => {
           <button
             onClick={fetchUserLoans}
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded"
-            disabled={loading}
+            disabled={loadingFetch}
           >
-            {loading ? "Loading..." : "Fetch Loans"}
+            {loadingFetch ? "Loading..." : "Fetch Loans"}
           </button>
         </div>
 
@@ -206,7 +208,7 @@ const LoanSection = () => {
                               handleReturnBook(loan._id || loan.id)
                             }
                             className="text-indigo-600 hover:text-indigo-900"
-                            disabled={loading}
+                            disabled={loadingReturn}
                           >
                             Return Book
                           </button>
