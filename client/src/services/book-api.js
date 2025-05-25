@@ -1,5 +1,5 @@
 // API service for the Smart Library
-const API_BASE_URL = "http://localhost:8082/api";
+const API_BASE_URL = "http://localhost/api";
 
 // Book API calls
 export const bookAPI = {

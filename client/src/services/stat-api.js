@@ -1,5 +1,5 @@
 // API service for the Smart Library Stats
-const STAT_SERVICE_URL = "http://localhost:8084/api";
+const STAT_SERVICE_URL = "http://localhost/api";
 
 // Stats API calls
 export const statsAPI = {

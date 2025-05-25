@@ -1,5 +1,5 @@
 // API service for the Smart Library
-const API_BASE_URL = 'http://localhost:8083/api';
+const API_BASE_URL = 'http://localhost/api';
 
 
 // Loan API calls
