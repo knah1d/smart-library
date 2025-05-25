@@ -20,7 +20,7 @@ export default function Header() {
         <div className="border-b border-indigo-500">
           <nav className="flex -mb-px">
             <NavLink
-              to="/"
+              to="/client/books"
               className={({ isActive }) =>
                 `mr-8 py-4 px-1 border-b-2 font-medium text-sm ${
                   isActive
@@ -32,7 +32,7 @@ export default function Header() {
               Books
             </NavLink>
             <NavLink
-              to="/users"
+              to="/client/users"
               className={({ isActive }) =>
                 `mr-8 py-4 px-1 border-b-2 font-medium text-sm ${
                   isActive
@@ -44,7 +44,7 @@ export default function Header() {
               Users
             </NavLink>
             <NavLink
-              to="/loans"
+              to="/client/loans"
               className={({ isActive }) =>
                 `mr-8 py-4 px-1 border-b-2 font-medium text-sm ${
                   isActive
@@ -56,7 +56,7 @@ export default function Header() {
               Loans
             </NavLink>
             <NavLink
-              to="/stats"
+              to="/client/stats"
               className={({ isActive }) =>
                 `py-4 px-1 border-b-2 font-medium text-sm ${
                   isActive

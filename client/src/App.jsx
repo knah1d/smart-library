@@ -16,10 +16,10 @@ function App() {
 
         <main className="flex-grow container mx-auto py-6 px-4">
           <Routes>
-            <Route path="/" element={<BooksPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/loans" element={<LoansPage />} />
-            <Route path="/stats" element={<StatsPage />} />
+            <Route path="client/books" element={<BooksPage />} />
+            <Route path="client/users" element={<UsersPage />} />
+            <Route path="client/loans" element={<LoansPage />} />
+            <Route path="client/stats" element={<StatsPage />} />
           </Routes>
         </main>
 
