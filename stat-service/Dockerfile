@@ -19,8 +19,11 @@ COPY --from=builder /app/routes ./routes
 COPY --from=builder /app/utilities ./utilities
 COPY --from=builder /app/index.js ./
 
-EXPOSE 8082
+# The stat service uses port 8084 (as per Nginx config)
+EXPOSE 8084
 
+# Create a non-root user and switch to it
 USER node
 
+# Start the application
 CMD ["npm", "start"]
