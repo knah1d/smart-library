@@ -1,0 +1,107 @@
+services:
+  # Database
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - smart-library-network
+    restart: unless-stopped
+
+  # Backend Services
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=production
+      - PORT=8081
+      - MONGODB_URI=mongodb://mongo:27017/smart_library
+      - LOAN_SERVICE_URL=http://loan-service:8083
+    depends_on:
+      - mongo
+    networks:
+      - smart-library-network
+    restart: unless-stopped
+
+  book-service:
+    build: ./book-service
+    container_name: book-service
+    ports:
+      - "8082:8082"
+    environment:
+      - NODE_ENV=production
+      - PORT=8082
+      - MONGODB_URI=mongodb://mongo:27017/smart_library
+    depends_on:
+      - mongo
+    networks:
+      - smart-library-network
+    restart: unless-stopped
+
+  loan-service:
+    build: ./loan-service
+    container_name: loan-service
+    ports:
+      - "8083:8083"
+    environment:
+      - NODE_ENV=production
+      - PORT=8083
+      - MONGODB_URI=mongodb://mongo:27017/smart_library
+      - BOOK_SERVICE_URL=http://book-service:8082
+      - USER_SERVICE_URL=http://user-service:8081
+    depends_on:
+      - mongo
+      - book-service
+      - user-service
+    networks:
+      - smart-library-network
+    restart: unless-stopped
+
+  stat-service:
+    build: ./stat-service
+    container_name: stat-service
+    ports:
+      - "8084:8084"
+    environment:
+      - NODE_ENV=production
+      - PORT=8084
+      - BOOK_SERVICE_URL=http://book-service:8082
+      - LOAN_SERVICE_URL=http://loan-service:8083
+      - USER_SERVICE_URL=http://user-service:8081
+    depends_on:
+      - book-service
+      - loan-service
+      - user-service
+    networks:
+      - smart-library-network
+    restart: unless-stopped
+
+  # Frontend
+  client:
+    build: ./client
+    container_name: client
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost
+    depends_on:
+      - user-service
+      - book-service
+      - loan-service
+      - stat-service
+    networks:
+      - smart-library-network
+    restart: unless-stopped
+
+networks:
+  smart-library-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+    driver: local

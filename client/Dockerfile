@@ -23,17 +23,11 @@ RUN echo 'server { \
 EXPOSE 5173
 
 # Create an entrypoint script to handle environment variables at runtime
-RUN echo '#!/bin/sh \
-    \
-    # Replace environment variables in the main.js file \
-    for file in /usr/share/nginx/html/assets/*.js; do \
-    if [ -f "$file" ]; then \
-    sed -i "s|VITE_API_BASE_URL_PLACEHOLDER|${VITE_API_BASE_URL:-http://localhost}|g" "$file" \
-    fi \
-    done \
-    \
-    # Start Nginx \
-    exec "$@"' > /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Set environment variable with default value
+ENV VITE_API_BASE_URL=http://localhost
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
