@@ -1,17 +1,18 @@
 import express from "express";
 import {
-  createLoan,
-  returnBook,
-  getUserLoans,
-  getOverdueLoans,
-  extendLoan,
-  updateLoan,
-  getLoanById,
-  getPopularBooksData,
-  getActiveUsersData,
-  getLoanCountByStatus,
-  getLoansToday,
-  getReturnsToday,
+    createLoan,
+    returnBook,
+    getUserLoans,
+    getOverdueLoans,
+    extendLoan,
+    updateLoan,
+    getLoanById,
+    getPopularBooksData,
+    getAllLoans,
+    getActiveUsersData,
+    getLoanCountByStatus,
+    getLoansToday,
+    getReturnsToday,
 } from "../controllers/loanController.js";
 import { validateLoan, validateReturn } from "../middlewares/validation.js";
 
@@ -24,6 +25,7 @@ router.get("/today", getLoansToday);
 router.get("/returns/today", getReturnsToday);
 
 // Routes
+router.get("/", getAllLoans); // Get all loans with pagination
 router.post("/", validateLoan, createLoan);
 router.post("/returns", validateReturn, returnBook);
 router.get("/overdue", getOverdueLoans);
