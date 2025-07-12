@@ -11,6 +11,14 @@ connectDB();
 
 // Middleware
 app.use(cors());
+
+// Request logging middleware
+app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${req.method} ${req.url} - ${req.ip}`);
+    next();
+});
+
 app.use(express.json());
 
 // Routes
@@ -28,14 +36,14 @@ app.use("/api/health", healthRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    message: "Something went wrong!",
-    error: process.env.NODE_ENV === "development" ? err.message : undefined,
-  });
+    console.error(err.stack);
+    res.status(500).json({
+        message: "Something went wrong!",
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
+    });
 });
 
 // Start the server
 app.listen(process.env.PORT, () => {
-  console.log(`Server is running on port ${process.env.PORT}`);
+    console.log(`Server is running on port ${process.env.PORT}`);
 });
