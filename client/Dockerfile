@@ -1,33 +1,27 @@
-# Stage 1: Build
-FROM node:18.16.0-slim AS builder
+FROM node:18.16.0-slim
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm ci
+
+# Copy source code
 COPY . .
+
+# Build the application
 RUN npm run build
 
-# Stage 2: Runtime
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Install serve to run the built app
+RUN npm install -g serve
 
-# Create a simple nginx config that handles SPA routing
-RUN echo 'server { \
-    listen 5173; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-    try_files $uri $uri/ /index.html; \
-    } \
-    }' > /etc/nginx/conf.d/default.conf
+# Expose port
+EXPOSE 80
 
-EXPOSE 5173
-
-# Create an entrypoint script to handle environment variables at runtime
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
-# Set environment variable with default value
+# Set environment variable
 ENV VITE_API_BASE_URL=http://localhost
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["nginx", "-g", "daemon off;"]
+# Start the application
+CMD ["serve", "-s", "dist", "-l", "80"]
