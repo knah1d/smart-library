@@ -1,107 +1,110 @@
 services:
-  # Database
-  mongo:
-    image: mongo:latest
-    container_name: mongo
-    ports:
-      - "27017:27017"
+  # MongoDB instances for each service
+  user-db:
+    image: mongo:7.0
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: smart_library_users
     volumes:
-      - mongodb-data:/data/db
+      - mongo_data:/data/db
     networks:
-      - smart-library-network
-    restart: unless-stopped
+      - slnet
 
-  # Backend Services
+  book-db:
+    image: mongo:7.0
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: smart_library_books
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - slnet
+
+  loan-db:
+    image: mongo:7.0
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: smart_library_loans
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - slnet
+
   user-service:
+    image: nahid/smartlibrary:user-service
     build: ./user-service
-    container_name: user-service
     ports:
       - "8081:8081"
     environment:
-      - NODE_ENV=production
-      - PORT=8081
-      - MONGODB_URI=mongodb://mongo:27017/smart_library
-      - LOAN_SERVICE_URL=http://loan-service:8083
+      MONGODB_URI: mongodb://user-db:27017/smart_library_users
     depends_on:
-      - mongo
+      - user-db
     networks:
-      - smart-library-network
-    restart: unless-stopped
+      - slnet
 
   book-service:
+    image: nahid/smartlibrary:book-service
     build: ./book-service
-    container_name: book-service
     ports:
       - "8082:8082"
     environment:
-      - NODE_ENV=production
-      - PORT=8082
-      - MONGODB_URI=mongodb://mongo:27017/smart_library
+      MONGODB_URI: mongodb://book-db:27017/smart_library_books
     depends_on:
-      - mongo
+      - book-db
     networks:
-      - smart-library-network
-    restart: unless-stopped
+      - slnet
 
   loan-service:
+    image: nahid/smartlibrary:loan-service
     build: ./loan-service
-    container_name: loan-service
     ports:
       - "8083:8083"
     environment:
-      - NODE_ENV=production
-      - PORT=8083
-      - MONGODB_URI=mongodb://mongo:27017/smart_library
-      - BOOK_SERVICE_URL=http://book-service:8082
-      - USER_SERVICE_URL=http://user-service:8081
+      USER_SERVICE_URL: http://user-service:8081
+      BOOK_SERVICE_URL: http://book-service:8082
+      MONGODB_URI: mongodb://loan-db:27017/smart_library_loans
     depends_on:
-      - mongo
-      - book-service
       - user-service
+      - book-service
+      - loan-db
     networks:
-      - smart-library-network
-    restart: unless-stopped
+      - slnet
 
   stat-service:
+    image: nahid/smartlibrary:stat-service
     build: ./stat-service
-    container_name: stat-service
     ports:
       - "8084:8084"
     environment:
-      - NODE_ENV=production
-      - PORT=8084
-      - BOOK_SERVICE_URL=http://book-service:8082
-      - LOAN_SERVICE_URL=http://loan-service:8083
-      - USER_SERVICE_URL=http://user-service:8081
+      PORT: 8084
+      USER_SERVICE_URL: http://user-service:8081
+      BOOK_SERVICE_URL: http://book-service:8082
+      LOAN_SERVICE_URL: http://loan-service:8083
     depends_on:
+      - user-service
       - book-service
       - loan-service
-      - user-service
     networks:
-      - smart-library-network
-    restart: unless-stopped
+      - slnet
 
-  # Frontend
-  client:
-    build: ./client
-    container_name: client
+
+  nginx:
+    image: nginx:latest
     ports:
-      - "5173:80"
-    environment:
-      - VITE_API_BASE_URL=http://localhost
+      - "80:80"
+    volumes:
+      - ./nginx/smart-library.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - user-service
       - book-service
       - loan-service
       - stat-service
     networks:
-      - smart-library-network
-    restart: unless-stopped
-
+      - slnet
+  
 networks:
-  smart-library-network:
+  slnet:
     driver: bridge
 
 volumes:
-  mongodb-data:
-    driver: local
+  mongo_data:
