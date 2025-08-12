@@ -1,110 +1,89 @@
 services:
-  # MongoDB instances for each service
-  user-db:
-    image: mongo:7.0
-    restart: always
-    environment:
-      MONGO_INITDB_DATABASE: smart_library_users
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - slnet
+    # MongoDB instances for each service
+    user-db:
+        image: mongo:7.0
+        restart: always
+        environment:
+            MONGO_INITDB_DATABASE: smart_library_users
+        volumes:
+            - mongo_user_data:/data/db
+        networks:
+            - slnet
 
-  book-db:
-    image: mongo:7.0
-    restart: always
-    environment:
-      MONGO_INITDB_DATABASE: smart_library_books
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - slnet
+    book-db:
+        image: mongo:7.0
+        restart: always
+        environment:
+            MONGO_INITDB_DATABASE: smart_library_books
+        volumes:
+            - mongo_book_data:/data/db
+        networks:
+            - slnet
 
-  loan-db:
-    image: mongo:7.0
-    restart: always
-    environment:
-      MONGO_INITDB_DATABASE: smart_library_loans
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - slnet
-
-  user-service:
-    image: nahid/smartlibrary:user-service
-    build: ./user-service
-    ports:
-      - "8081:8081"
-    environment:
-      MONGODB_URI: mongodb://user-db:27017/smart_library_users
-    depends_on:
-      - user-db
-    networks:
-      - slnet
-
-  book-service:
-    image: nahid/smartlibrary:book-service
-    build: ./book-service
-    ports:
-      - "8082:8082"
-    environment:
-      MONGODB_URI: mongodb://book-db:27017/smart_library_books
-    depends_on:
-      - book-db
-    networks:
-      - slnet
-
-  loan-service:
-    image: nahid/smartlibrary:loan-service
-    build: ./loan-service
-    ports:
-      - "8083:8083"
-    environment:
-      USER_SERVICE_URL: http://user-service:8081
-      BOOK_SERVICE_URL: http://book-service:8082
-      MONGODB_URI: mongodb://loan-db:27017/smart_library_loans
-    depends_on:
-      - user-service
-      - book-service
-      - loan-db
-    networks:
-      - slnet
-
-  stat-service:
-    image: nahid/smartlibrary:stat-service
-    build: ./stat-service
-    ports:
-      - "8084:8084"
-    environment:
-      PORT: 8084
-      USER_SERVICE_URL: http://user-service:8081
-      BOOK_SERVICE_URL: http://book-service:8082
-      LOAN_SERVICE_URL: http://loan-service:8083
-    depends_on:
-      - user-service
-      - book-service
-      - loan-service
-    networks:
-      - slnet
+    loan-db:
+        image: mongo:7.0
+        restart: always
+        environment:
+            MONGO_INITDB_DATABASE: smart_library_loans
+        volumes:
+            - mongo_loan_data:/data/db
+        networks:
+            - slnet
 
 
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/smart-library.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - user-service
-      - book-service
-      - loan-service
-      - stat-service
-    networks:
-      - slnet
-  
+    user-service:
+        image: nahid/smartlibrary:user-service
+        build: ./user-service
+        environment:
+            MONGODB_URI: mongodb://user-db:27017/smart_library_users
+        depends_on:
+            - user-db
+        networks:
+            - slnet
+
+    book-service:
+        image: nahid/smartlibrary:book-service
+        build: ./book-service
+        environment:
+            MONGODB_URI: mongodb://book-db:27017/smart_library_books
+        depends_on:
+            - book-db
+        networks:
+            - slnet
+
+    loan-service:
+        image: nahid/smartlibrary:loan-service
+        build: ./loan-service
+        environment:
+            USER_SERVICE_URL: http://user-service:8081
+            BOOK_SERVICE_URL: http://book-service:8082
+            MONGODB_URI: mongodb://loan-db:27017/smart_library_loans
+        depends_on:
+            - user-service
+            - book-service
+            - loan-db
+        networks:
+            - slnet
+
+    nginx:
+        image: nginx:latest
+        ports:
+            - "80:80"
+        volumes:
+            - ./nginx/smart-library.conf:/etc/nginx/conf.d/default.conf:ro
+        depends_on:
+            - user-service
+            - book-service
+            - loan-service
+        networks:
+            - slnet
+
 networks:
-  slnet:
-    driver: bridge
+    slnet:
+        driver: bridge
 
 volumes:
-  mongo_data:
+    mongo_user_data:
+    mongo_book_data:
+    mongo_loan_data:
+
