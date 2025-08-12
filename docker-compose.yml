@@ -30,12 +30,12 @@ services:
         networks:
             - slnet
 
-
     user-service:
         image: nahid/smartlibrary:user-service
         build: ./user-service
         environment:
             MONGODB_URI: mongodb://user-db:27017/smart_library_users
+            NODE_ENV: development
         depends_on:
             - user-db
         networks:
@@ -46,6 +46,7 @@ services:
         build: ./book-service
         environment:
             MONGODB_URI: mongodb://book-db:27017/smart_library_books
+            NODE_ENV: development
         depends_on:
             - book-db
         networks:
@@ -55,8 +56,9 @@ services:
         image: nahid/smartlibrary:loan-service
         build: ./loan-service
         environment:
-            USER_SERVICE_URL: http://user-service:8081
-            BOOK_SERVICE_URL: http://book-service:8082
+            USER_SERVICE_URL: http://user-service:8081/api
+            BOOK_SERVICE_URL: http://book-service:8082/api
+            NODE_ENV: development
             MONGODB_URI: mongodb://loan-db:27017/smart_library_loans
         depends_on:
             - user-service
@@ -86,4 +88,3 @@ volumes:
     mongo_user_data:
     mongo_book_data:
     mongo_loan_data:
-
